@@ -1,28 +1,59 @@
-// 智能穿搭助手 - 主应用逻辑
-// 使用LocalStorage进行本地数据存储
+// 智能穿搭助手 - 完整应用逻辑
+// 包含：用户系统、精确定位、后台管理、AI推荐
 
-// ==================== 数据存储管理 ====================
+// ==================== 配置 ====================
+const CONFIG = {
+    // 管理员账号（硬编码，实际应该加密存储）
+    ADMIN_USERNAME: 'admin',
+    ADMIN_PASSWORD: 'admin123',
+    
+    // 默认API Key（管理员可修改）
+    DEFAULT_API_KEY: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', // 需要管理员配置
+    
+    // 设备注册限制
+    MAX_REGISTRATIONS_PER_DEVICE: 5,
+    
+    // 中国省市数据（简化版）
+    PROVINCES: [
+        { code: '110000', name: '北京市', cities: [
+            { code: '110100', name: '北京市', districts: ['东城区','西城区','朝阳区','丰台区','石景山区','海淀区','门头沟区','房山区','通州区','顺义区','昌平区','大兴区','怀柔区','平谷区','密云区','延庆区'] }
+        ]},
+        { code: '310000', name: '上海市', cities: [
+            { code: '310100', name: '上海市', districts: ['黄浦区','徐汇区','长宁区','静安区','普陀区','虹口区','杨浦区','闵行区','宝山区','嘉定区','浦东新区','金山区','松江区','青浦区','奉贤区','崇明区'] }
+        ]},
+        { code: '440000', name: '广东省', cities: [
+            { code: '440100', name: '广州市', districts: ['荔湾区','越秀区','海珠区','天河区','白云区','黄埔区','番禺区','花都区','南沙区','从化区','增城区'] },
+            { code: '440300', name: '深圳市', districts: ['罗湖区','福田区','南山区','宝安区','龙岗区','盐田区','龙华区','坪山区','光明区'] }
+        ]},
+        { code: '320000', name: '江苏省', cities: [
+            { code: '320100', name: '南京市', districts: ['玄武区','秦淮区','建邺区','鼓楼区','浦口区','栖霞区','雨花台区','江宁区','六合区','溧水区','高淳区'] },
+            { code: '320500', name: '苏州市', districts: ['虎丘区','吴中区','相城区','姑苏区','吴江区','常熟市','张家港市','昆山市','太仓市'] }
+        ]},
+        { code: '330000', name: '浙江省', cities: [
+            { code: '330100', name: '杭州市', districts: ['上城区','拱墅区','西湖区','滨江区','萧山区','余杭区','富阳区','临安区','临平区','钱塘区'] },
+            { code: '330200', name: '宁波市', districts: ['海曙区','江北区','北仑区','镇海区','鄞州区','奉化区','余姚市','慈溪市'] }
+        ]}
+    ]
+};
+
+// ==================== 存储管理 ====================
 const Storage = {
     get(key, defaultValue = null) {
         try {
             const data = localStorage.getItem(`smart_outfit_${key}`);
             return data ? JSON.parse(data) : defaultValue;
         } catch (e) {
-            console.error('Storage get error:', e);
             return defaultValue;
         }
     },
-    
     set(key, value) {
         try {
             localStorage.setItem(`smart_outfit_${key}`, JSON.stringify(value));
             return true;
         } catch (e) {
-            console.error('Storage set error:', e);
             return false;
         }
     },
-    
     remove(key) {
         localStorage.removeItem(`smart_outfit_${key}`);
     }
@@ -30,59 +61,429 @@ const Storage = {
 
 // ==================== 全局状态 ====================
 let currentUser = null;
-let currentWardrobe = [];
+let currentLocation = null;
 let currentWeather = null;
 let selectedOccasion = null;
+let isAdmin = false;
 
 // ==================== 初始化 ====================
-document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-});
+document.addEventListener('DOMContentLoaded', initApp);
 
 function initApp() {
-    // 加载用户资料
-    currentUser = Storage.get('profile', {});
-    currentWardrobe = Storage.get('wardrobe', []);
+    // 检查登录状态
+    const session = Storage.get('session');
+    if (session && session.isLoggedIn) {
+        currentUser = Storage.get(`user_${session.phone}`);
+        showMainApp();
+    } else {
+        showAuthPage();
+    }
     
-    // 恢复表单数据
-    restoreProfileForm();
-    
-    // 渲染衣橱
-    renderWardrobe();
-    
-    // 获取天气
-    fetchWeather();
-    
-    // 绑定标签点击
-    bindTagEvents();
-    
-    // 绑定导航切换
-    bindNavEvents();
-    
-    // 检查API配置
-    checkApiConfig();
+    // 绑定事件
+    bindAuthTabs();
+    bindNavTabs();
+    bindOccasionTags();
+    initLocationSelector();
 }
 
-// ==================== 导航切换 ====================
-function bindNavEvents() {
-    const tabs = document.querySelectorAll('.nav-tab');
+// ==================== 页面切换 ====================
+function showAuthPage() {
+    document.getElementById('authPage').style.display = 'block';
+    document.getElementById('mainApp').classList.remove('show');
+    document.getElementById('adminPage').classList.remove('show');
+}
+
+function showMainApp() {
+    document.getElementById('authPage').style.display = 'none';
+    document.getElementById('mainApp').classList.add('show');
+    document.getElementById('adminPage').classList.remove('show');
+    
+    // 加载用户数据
+    loadUserProfile();
+    loadWardrobe();
+    initLocation();
+}
+
+// ==================== 登录注册 ====================
+function bindAuthTabs() {
+    const tabs = document.querySelectorAll('.auth-tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            const targetTab = tab.dataset.tab;
-            
-            // 更新导航状态
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             
-            // 切换内容
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.getElementById(targetTab).classList.add('active');
+            const target = tab.dataset.tab;
+            document.getElementById('loginForm').style.display = target === 'login' ? 'block' : 'none';
+            document.getElementById('registerForm').style.display = target === 'register' ? 'block' : 'none';
         });
     });
 }
 
-// ==================== 场合标签 ====================
-function bindTagEvents() {
+function handleLogin() {
+    const phone = document.getElementById('loginPhone').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+    
+    // 验证
+    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+        errorEl.textContent = '请输入正确的手机号';
+        errorEl.classList.add('show');
+        return;
+    }
+    if (!password) {
+        errorEl.textContent = '请输入密码';
+        errorEl.classList.add('show');
+        return;
+    }
+    
+    // 检查用户是否存在
+    const user = Storage.get(`user_${phone}`);
+    if (!user) {
+        errorEl.textContent = '该手机号未注册';
+        errorEl.classList.add('show');
+        return;
+    }
+    
+    // 验证密码（实际应该加密）
+    if (user.password !== hashPassword(password)) {
+        errorEl.textContent = '密码错误';
+        errorEl.classList.add('show');
+        return;
+    }
+    
+    // 登录成功
+    currentUser = user;
+    Storage.set('session', { isLoggedIn: true, phone: phone });
+    errorEl.classList.remove('show');
+    showMainApp();
+}
+
+function handleRegister() {
+    const phone = document.getElementById('regPhone').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirmPassword = document.getElementById('regConfirmPassword').value;
+    const errorEl = document.getElementById('regError');
+    
+    // 验证
+    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+        errorEl.textContent = '请输入正确的手机号';
+        errorEl.classList.add('show');
+        return;
+    }
+    if (password.length < 6) {
+        errorEl.textContent = '密码至少6位';
+        errorEl.classList.add('show');
+        return;
+    }
+    if (password !== confirmPassword) {
+        errorEl.textContent = '两次密码不一致';
+        errorEl.classList.add('show');
+        return;
+    }
+    
+    // 检查手机号是否已注册
+    if (Storage.get(`user_${phone}`)) {
+        errorEl.textContent = '该手机号已注册';
+        errorEl.classList.add('show');
+        return;
+    }
+    
+    // 检查设备注册次数
+    const deviceId = getDeviceId();
+    const deviceRegs = Storage.get(`device_regs_${deviceId}`) || 0;
+    if (deviceRegs >= CONFIG.MAX_REGISTRATIONS_PER_DEVICE) {
+        errorEl.textContent = '该设备注册次数已达上限（5次）';
+        errorEl.classList.add('show');
+        return;
+    }
+    
+    // 创建用户
+    const user = {
+        phone: phone,
+        password: hashPassword(password),
+        nickname: '',
+        avatar: '',
+        gender: '',
+        ageRange: '',
+        income: '',
+        occupation: '',
+        stylePreference: '',
+        location: null,
+        wardrobe: [],
+        createdAt: new Date().toISOString()
+    };
+    
+    Storage.set(`user_${phone}`, user);
+    Storage.set(`device_regs_${deviceId}`, deviceRegs + 1);
+    
+    // 自动登录
+    currentUser = user;
+    Storage.set('session', { isLoggedIn: true, phone: phone });
+    errorEl.classList.remove('show');
+    
+    alert('注册成功！');
+    showMainApp();
+}
+
+function logout() {
+    Storage.remove('session');
+    currentUser = null;
+    showAuthPage();
+}
+
+function hashPassword(password) {
+    // 简单哈希（实际应该用bcrypt等）
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+        const char = password.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return hash.toString(16);
+}
+
+function getDeviceId() {
+    let deviceId = Storage.get('device_id');
+    if (!deviceId) {
+        deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
+        Storage.set('device_id', deviceId);
+    }
+    return deviceId;
+}
+
+// ==================== 导航切换 ====================
+function bindNavTabs() {
+    const tabs = document.querySelectorAll('.nav-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            const target = tab.dataset.tab;
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(target).classList.add('active');
+        });
+    });
+}
+
+// ==================== 定位功能 ====================
+function initLocation() {
+    // 尝试获取保存的位置
+    const savedLocation = currentUser?.location;
+    if (savedLocation) {
+        currentLocation = savedLocation;
+        updateLocationDisplay();
+        fetchWeather();
+    } else {
+        // 默认位置
+        currentLocation = { province: '广东省', city: '广州市', district: '天河区', street: '' };
+        updateLocationDisplay();
+        fetchWeather();
+    }
+}
+
+function initLocationSelector() {
+    // 初始化省份选择器
+    const provinceSelect = document.getElementById('provinceSelect');
+    CONFIG.PROVINCES.forEach(prov => {
+        const option = document.createElement('option');
+        option.value = prov.code;
+        option.textContent = prov.name;
+        provinceSelect.appendChild(option);
+    });
+}
+
+function openLocationModal() {
+    document.getElementById('locationModal').classList.add('show');
+}
+
+function closeLocationModal() {
+    document.getElementById('locationModal').classList.remove('show');
+}
+
+function selectLocationType(type) {
+    document.querySelectorAll('.location-type-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if (type === 'auto') {
+        document.getElementById('autoLocationSection').style.display = 'block';
+        document.getElementById('manualLocationSection').style.display = 'none';
+    } else {
+        document.getElementById('autoLocationSection').style.display = 'none';
+        document.getElementById('manualLocationSection').style.display = 'block';
+    }
+}
+
+function getCurrentLocation() {
+    const statusEl = document.getElementById('locationStatus');
+    statusEl.textContent = '正在获取位置...';
+    
+    if (!navigator.geolocation) {
+        statusEl.textContent = '您的浏览器不支持定位';
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude, longitude } = position.coords;
+            // 使用逆地理编码（简化版，实际应该调用地图API）
+            statusEl.textContent = `已获取坐标：${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            
+            // 模拟定位到最近的城市
+            currentLocation = { 
+                province: '广东省', 
+                city: '广州市', 
+                district: '天河区', 
+                street: '当前位置',
+                lat: latitude,
+                lng: longitude
+            };
+            updateLocationDisplay();
+            fetchWeather();
+            closeLocationModal();
+        },
+        (error) => {
+            statusEl.textContent = '定位失败：' + error.message;
+        }
+    );
+}
+
+function onProvinceChange() {
+    const provinceCode = document.getElementById('provinceSelect').value;
+    const citySelect = document.getElementById('citySelect');
+    const districtSelect = document.getElementById('districtSelect');
+    
+    citySelect.innerHTML = '<option value="">选择城市</option>';
+    districtSelect.innerHTML = '<option value="">选择区县</option>';
+    
+    if (!provinceCode) return;
+    
+    const province = CONFIG.PROVINCES.find(p => p.code === provinceCode);
+    if (province) {
+        province.cities.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city.code;
+            option.textContent = city.name;
+            citySelect.appendChild(option);
+        });
+    }
+}
+
+function onCityChange() {
+    const provinceCode = document.getElementById('provinceSelect').value;
+    const cityCode = document.getElementById('citySelect').value;
+    const districtSelect = document.getElementById('districtSelect');
+    
+    districtSelect.innerHTML = '<option value="">选择区县</option>';
+    
+    if (!cityCode) return;
+    
+    const province = CONFIG.PROVINCES.find(p => p.code === provinceCode);
+    const city = province?.cities.find(c => c.code === cityCode);
+    
+    if (city) {
+        city.districts.forEach(district => {
+            const option = document.createElement('option');
+            option.value = district;
+            option.textContent = district;
+            districtSelect.appendChild(option);
+        });
+    }
+}
+
+function confirmLocation() {
+    const type = document.querySelector('.location-type-btn.active').textContent.includes('自动') ? 'auto' : 'manual';
+    
+    if (type === 'manual') {
+        const province = document.getElementById('provinceSelect');
+        const city = document.getElementById('citySelect');
+        const district = document.getElementById('districtSelect');
+        const street = document.getElementById('streetInput');
+        
+        if (!province.value || !city.value) {
+            alert('请选择省份和城市');
+            return;
+        }
+        
+        currentLocation = {
+            province: province.options[province.selectedIndex].text,
+            city: city.options[city.selectedIndex].text,
+            district: district.value || '',
+            street: street.value.trim()
+        };
+    }
+    
+    // 保存到用户数据
+    if (currentUser) {
+        currentUser.location = currentLocation;
+        Storage.set(`user_${currentUser.phone}`, currentUser);
+    }
+    
+    updateLocationDisplay();
+    fetchWeather();
+    closeLocationModal();
+}
+
+function updateLocationDisplay() {
+    const locationText = currentLocation 
+        ? `${currentLocation.city} ${currentLocation.district || ''} ${currentLocation.street || ''}`.trim()
+        : '点击选择位置';
+    document.getElementById('currentLocation').textContent = locationText;
+}
+
+// ==================== 天气功能 ====================
+async function fetchWeather() {
+    if (!currentLocation) return;
+    
+    try {
+        // 使用Open-Meteo免费API（根据城市获取坐标）
+        const cityCoords = {
+            '北京市': { lat: 39.9, lng: 116.4 },
+            '上海市': { lat: 31.2, lng: 121.5 },
+            '广州市': { lat: 23.1, lng: 113.3 },
+            '深圳市': { lat: 22.5, lng: 114.1 },
+            '南京市': { lat: 32.0, lng: 118.8 },
+            '苏州市': { lat: 31.3, lng: 120.6 },
+            '杭州市': { lat: 30.3, lng: 120.2 },
+            '宁波市': { lat: 29.9, lng: 121.5 }
+        };
+        
+        const coords = cityCoords[currentLocation.city] || { lat: 23.1, lng: 113.3 };
+        
+        const response = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=Asia/Shanghai&forecast_days=1`
+        );
+        
+        if (!response.ok) throw new Error('Weather API failed');
+        
+        const data = await response.json();
+        currentWeather = {
+            temp: Math.round(data.current.temperature_2m),
+            desc: getWeatherDesc(data.current.weather_code),
+            maxTemp: Math.round(data.daily.temperature_2m_max[0]),
+            minTemp: Math.round(data.daily.temperature_2m_min[0])
+        };
+        
+        document.getElementById('weatherTemp').textContent = currentWeather.temp + '°';
+        document.getElementById('weatherDesc').textContent = currentWeather.desc;
+        document.getElementById('weatherRange').textContent = `${currentWeather.minTemp}°-${currentWeather.maxTemp}°`;
+    } catch (error) {
+        console.error('Weather error:', error);
+        // 使用默认天气
+        currentWeather = { temp: 25, desc: '多云', maxTemp: 28, minTemp: 22 };
+        document.getElementById('weatherTemp').textContent = '25°';
+        document.getElementById('weatherDesc').textContent = '多云';
+        document.getElementById('weatherRange').textContent = '22°-28°';
+    }
+}
+
+function getWeatherDesc(code) {
+    const map = { 0: '晴朗', 1: '主要晴朗', 2: '多云', 3: '阴天', 45: '雾', 51: '毛毛雨', 61: '小雨', 63: '中雨', 65: '大雨', 71: '小雪', 95: '雷雨' };
+    return map[code] || '多云';
+}
+
+// ==================== 场合选择 ====================
+function bindOccasionTags() {
     const tags = document.querySelectorAll('#occasionTags .tag');
     tags.forEach(tag => {
         tag.addEventListener('click', () => {
@@ -93,107 +494,111 @@ function bindTagEvents() {
     });
 }
 
-// ==================== 天气获取 ====================
-async function fetchWeather() {
-    const city = currentUser.city || '广州';
-    
-    try {
-        // 使用Open-Meteo免费API
-        const response = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=23.13&longitude=113.26&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=Asia/Shanghai&forecast_days=1`
-        );
-        
-        if (!response.ok) throw new Error('Weather API failed');
-        
-        const data = await response.json();
-        currentWeather = {
-            temp: Math.round(data.current.temperature_2m),
-            city: city,
-            desc: getWeatherDesc(data.current.weather_code),
-            maxTemp: Math.round(data.daily.temperature_2m_max[0]),
-            minTemp: Math.round(data.daily.temperature_2m_min[0])
-        };
-        
-        updateWeatherUI();
-    } catch (error) {
-        console.error('Weather fetch error:', error);
-        // 使用默认天气
-        currentWeather = {
-            temp: 25,
-            city: city,
-            desc: '多云',
-            maxTemp: 28,
-            minTemp: 22
-        };
-        updateWeatherUI();
-    }
-}
-
-function getWeatherDesc(code) {
-    const weatherMap = {
-        0: '晴朗', 1: '主要晴朗', 2: '多云', 3: '阴天',
-        45: '雾', 48: '雾凇',
-        51: '毛毛雨', 53: '中雨', 55: '大雨',
-        61: '小雨', 63: '中雨', 65: '大雨',
-        71: '小雪', 73: '中雪', 75: '大雪',
-        95: '雷雨'
-    };
-    return weatherMap[code] || '多云';
-}
-
-function updateWeatherUI() {
-    if (!currentWeather) return;
-    
-    const weatherInfo = document.getElementById('weatherInfo');
-    weatherInfo.innerHTML = `
-        <div class="temp">${currentWeather.temp}°</div>
-        <div class="details">
-            <div class="city">${currentWeather.city}</div>
-            <div class="desc">${currentWeather.desc} · ${currentWeather.minTemp}°-${currentWeather.maxTemp}°</div>
-        </div>
-    `;
-}
-
-// ==================== 个人资料管理 ====================
-function restoreProfileForm() {
+// ==================== 个人资料 ====================
+function loadUserProfile() {
     if (!currentUser) return;
     
-    const fields = ['nickname', 'gender', 'ageRange', 'income', 'occupation', 'stylePreference', 'city'];
-    fields.forEach(field => {
-        const el = document.getElementById(field);
-        if (el && currentUser[field]) {
-            el.value = currentUser[field];
-        }
-    });
+    // 更新头部显示
+    document.getElementById('profileName').textContent = currentUser.nickname || '未设置昵称';
+    document.getElementById('profilePhone').textContent = currentUser.phone;
+    
+    // 更新头像
+    if (currentUser.avatar) {
+        document.getElementById('avatarImg').src = currentUser.avatar;
+        document.getElementById('avatarImg').style.display = 'block';
+        document.getElementById('avatarPlaceholder').style.display = 'none';
+    }
+    
+    // 填充表单
+    document.getElementById('editNickname').value = currentUser.nickname || '';
+    document.getElementById('editGender').value = currentUser.gender || '';
+    document.getElementById('editAgeRange').value = currentUser.ageRange || '';
+    document.getElementById('editIncome').value = currentUser.income || '';
+    document.getElementById('editOccupation').value = currentUser.occupation || '';
+    document.getElementById('editStyle').value = currentUser.stylePreference || '';
+}
+
+function handleAvatarUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const avatarData = e.target.result;
+        document.getElementById('avatarImg').src = avatarData;
+        document.getElementById('avatarImg').style.display = 'block';
+        document.getElementById('avatarPlaceholder').style.display = 'none';
+        
+        // 临时保存，等点击保存按钮再存到用户数据
+        currentUser.tempAvatar = avatarData;
+    };
+    reader.readAsDataURL(file);
 }
 
 function saveProfile() {
-    const profile = {
-        nickname: document.getElementById('nickname').value,
-        gender: document.getElementById('gender').value,
-        ageRange: document.getElementById('ageRange').value,
-        income: document.getElementById('income').value,
-        occupation: document.getElementById('occupation').value,
-        stylePreference: document.getElementById('stylePreference').value,
-        city: document.getElementById('city').value
-    };
+    if (!currentUser) return;
     
-    // 验证必填项
-    if (!profile.nickname || !profile.gender || !profile.city) {
-        alert('请填写完整的基本信息（昵称、性别、城市）');
-        return;
+    currentUser.nickname = document.getElementById('editNickname').value;
+    currentUser.gender = document.getElementById('editGender').value;
+    currentUser.ageRange = document.getElementById('editAgeRange').value;
+    currentUser.income = document.getElementById('editIncome').value;
+    currentUser.occupation = document.getElementById('editOccupation').value;
+    currentUser.stylePreference = document.getElementById('editStyle').value;
+    
+    if (currentUser.tempAvatar) {
+        currentUser.avatar = currentUser.tempAvatar;
+        delete currentUser.tempAvatar;
     }
     
-    Storage.set('profile', profile);
-    currentUser = profile;
+    Storage.set(`user_${currentUser.phone}`, currentUser);
     
-    alert('个人资料已保存！');
+    // 更新显示
+    document.getElementById('profileName').textContent = currentUser.nickname || '未设置昵称';
     
-    // 刷新天气（如果城市变了）
-    fetchWeather();
+    alert('资料已保存！');
 }
 
 // ==================== 衣橱管理 ====================
+function loadWardrobe() {
+    if (!currentUser) return;
+    
+    const wardrobe = currentUser.wardrobe || [];
+    const container = document.getElementById('wardrobeList');
+    
+    if (wardrobe.length === 0) {
+        container.innerHTML = '<p style="color: #999; text-align: center; grid-column: span 2;">衣橱是空的</p>';
+        return;
+    }
+    
+    container.innerHTML = wardrobe.map((item, index) => `
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; position: relative;">
+            <div style="font-size: 24px; margin-bottom: 5px;">${getCategoryIcon(item.category)}</div>
+            <div style="font-size: 12px; color: #667eea;">${item.category}</div>
+            <div style="font-size: 13px; margin-top: 5px;">${item.name}</div>
+            <button onclick="deleteWardrobeItem(${index})" style="position: absolute; top: 5px; right: 5px; background: #ff6b6b; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 12px;">×</button>
+        </div>
+    `).join('');
+}
+
+function getCategoryIcon(category) {
+    const icons = { '外套': '🧥', '上装': '👔', '下装': '👖', '鞋履': '👠', '配饰': '👜', '其他': '👗' };
+    return icons[category] || '👗';
+}
+
+function guessCategory(name) {
+    const categories = {
+        '外套': ['外套', '西装', '夹克', '风衣', '大衣', '羽绒服'],
+        '上装': ['衬衫', 'T恤', '毛衣', '卫衣', '针织衫', '背心'],
+        '下装': ['裤子', '裙子', '短裤', '牛仔裤', '西裤', '阔腿裤'],
+        '鞋履': ['鞋', '靴', '高跟鞋', '运动鞋', '乐福鞋'],
+        '配饰': ['包', '围巾', '帽子', '首饰', '耳环', '项链']
+    };
+    for (const [cat, keywords] of Object.entries(categories)) {
+        if (keywords.some(k => name.includes(k))) return cat;
+    }
+    return '其他';
+}
+
 function addToWardrobe() {
     const input = document.getElementById('newClothes').value.trim();
     if (!input) {
@@ -201,180 +606,79 @@ function addToWardrobe() {
         return;
     }
     
-    // 解析多行输入
-    const lines = input.split('\n')
-        .map(line => line.trim())
-        .filter(line => line);
+    const lines = input.split('\n').map(l => l.trim()).filter(l => l);
+    const items = lines.map(line => ({
+        name: line.replace(/^[-\d.\s]+/, ''),
+        category: guessCategory(line),
+        addedAt: new Date().toISOString()
+    })).filter(item => item.name);
     
-    const items = [];
-    lines.forEach(line => {
-        // 去除开头的 - 或数字标记
-        const cleanLine = line.replace(/^[-\d.\s]+/, '').trim();
-        if (cleanLine) {
-            items.push(cleanLine);
-        }
-    });
+    if (!currentUser.wardrobe) currentUser.wardrobe = [];
+    currentUser.wardrobe.push(...items);
     
-    if (items.length === 0) {
-        items.push(input);
-    }
-    
-    items.forEach(item => {
-        const clothesItem = {
-            id: Date.now() + Math.random(),
-            name: item,
-            category: guessCategory(item),
-            addedAt: new Date().toISOString()
-        };
-        currentWardrobe.push(clothesItem);
-    });
-    
-    Storage.set('wardrobe', currentWardrobe);
+    Storage.set(`user_${currentUser.phone}`, currentUser);
     document.getElementById('newClothes').value = '';
-    renderWardrobe();
+    loadWardrobe();
     
-    alert(`已添加 ${items.length} 件衣物到衣橱！`);
+    alert(`已添加 ${items.length} 件衣物！`);
 }
 
-function guessCategory(name) {
-    const categories = {
-        '外套': ['外套', '西装', '夹克', '风衣', '大衣', '羽绒服'],
-        '上装': ['衬衫', 'T恤', '毛衣', '卫衣', '针织衫', 'blouse', '背心'],
-        '下装': ['裤子', '裙子', '短裤', '牛仔裤', '西裤', '阔腿裤', '半裙'],
-        '鞋履': ['鞋', '靴', '高跟鞋', '运动鞋', '乐福鞋', '凉鞋'],
-        '配饰': ['包', '围巾', '帽子', '首饰', '耳环', '项链', '丝巾', '腰带', '手表']
-    };
-    
-    for (const [cat, keywords] of Object.entries(categories)) {
-        if (keywords.some(k => name.includes(k))) {
-            return cat;
-        }
-    }
-    return '其他';
+function deleteWardrobeItem(index) {
+    if (!confirm('确定删除这件衣物吗？')) return;
+    currentUser.wardrobe.splice(index, 1);
+    Storage.set(`user_${currentUser.phone}`, currentUser);
+    loadWardrobe();
 }
 
-function getCategoryIcon(category) {
-    const icons = {
-        '外套': '🧥',
-        '上装': '👔',
-        '下装': '👖',
-        '鞋履': '👠',
-        '配饰': '👜',
-        '其他': '👗'
-    };
-    return icons[category] || '👗';
-}
-
-function renderWardrobe() {
-    const container = document.getElementById('wardrobeList');
-    if (currentWardrobe.length === 0) {
-        container.innerHTML = '<p style="color: #999; text-align: center; grid-column: span 2;">衣橱是空的，先添加一些衣物吧！</p>';
-        return;
-    }
-    
-    container.innerHTML = currentWardrobe.map(item => `
-        <div class="wardrobe-item" data-id="${item.id}">
-            <div style="font-size: 24px; margin-bottom: 5px;">${getCategoryIcon(item.category)}</div>
-            <div style="font-size: 12px; color: #667eea; margin-bottom: 5px;">${item.category}</div>
-            <div style="font-size: 13px; color: #333; line-height: 1.3;">${item.name}</div>
-            <button onclick="deleteWardrobeItem(${item.id})" style="margin-top: 8px; padding: 4px 10px; background: #ff6b6b; color: white; border: none; border-radius: 5px; font-size: 11px; cursor: pointer;">删除</button>
-        </div>
-    `).join('');
-}
-
-function deleteWardrobeItem(id) {
-    if (!confirm('确定要删除这件衣物吗？')) return;
-    currentWardrobe = currentWardrobe.filter(item => item.id !== id);
-    Storage.set('wardrobe', currentWardrobe);
-    renderWardrobe();
-}
-
-// ==================== 设置管理 ====================
-function checkApiConfig() {
-    const apiKey = Storage.get('apiKey', '');
-    const apiConfigDiv = document.getElementById('apiConfig');
-    
-    if (!apiKey) {
-        apiConfigDiv.style.display = 'block';
-        document.getElementById('recommendBtn').disabled = true;
-    } else {
-        apiConfigDiv.style.display = 'none';
-        document.getElementById('recommendBtn').disabled = false;
-    }
-    
-    // 恢复设置表单
-    document.getElementById('apiKey').value = apiKey;
-}
-
-function saveSettings() {
-    const apiKey = document.getElementById('apiKey').value.trim();
-    if (!apiKey) {
-        alert('请输入API Key');
-        return;
-    }
-    
-    Storage.set('apiKey', apiKey);
-    alert('设置已保存！');
-    checkApiConfig();
-}
-
-// ==================== 智能推荐核心 ====================
+// ==================== AI推荐 ====================
 async function getRecommendation() {
-    // 检查必要信息
     if (!selectedOccasion) {
-        alert('请先选择今天的场合');
+        alert('请先选择场合');
         return;
     }
     
-    if (!currentUser || !currentUser.nickname) {
-        alert('请先完善个人资料');
+    // 检查用户资料是否完整
+    if (!currentUser.nickname || !currentUser.gender) {
+        alert('请先完善个人资料（昵称和性别）');
         document.querySelector('[data-tab="profile"]').click();
         return;
     }
     
-    const apiKey = Storage.get('apiKey', '');
+    // 获取管理员配置的API Key
+    const apiKey = Storage.get('admin_api_key');
     if (!apiKey) {
-        alert('请先配置API Key');
+        alert('系统配置错误：API Key未设置，请联系管理员');
         return;
     }
     
-    // 显示加载
-    document.getElementById('loading').classList.remove('hidden');
+    document.getElementById('loading').classList.add('show');
     document.getElementById('resultCard').classList.remove('show');
     
     try {
-        const recommendation = await callKimiAPI(apiKey);
+        const recommendation = await callAIAPI(apiKey);
         displayRecommendation(recommendation);
     } catch (error) {
-        console.error('Recommendation error:', error);
         alert('获取推荐失败：' + error.message);
     } finally {
-        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('loading').classList.remove('show');
     }
 }
 
-async function callKimiAPI(apiKey) {
+async function callAIAPI(apiKey) {
     const occasionMap = {
-        'important_meeting': '重要会议',
-        'daily_work': '普通上班',
-        'client_visit': '客户拜访',
-        'party': '派对聚会',
-        'date': '约会',
-        'interview': '面试',
-        'casual': '休闲日常'
+        'important_meeting': '重要会议', 'daily_work': '普通上班',
+        'client_visit': '客户拜访', 'party': '派对聚会',
+        'date': '约会', 'interview': '面试', 'casual': '休闲日常'
     };
-    
-    const extraNotes = document.getElementById('extraNotes').value.trim();
     
     const prompt = buildPrompt({
         user: currentUser,
         weather: currentWeather,
+        location: currentLocation,
         occasion: occasionMap[selectedOccasion],
-        wardrobe: currentWardrobe,
-        extraNotes: extraNotes
+        wardrobe: currentUser.wardrobe || []
     });
     
-    // 调用Kimi API (使用OpenAI兼容格式)
     const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -384,7 +688,7 @@ async function callKimiAPI(apiKey) {
         body: JSON.stringify({
             model: 'kimi-k2.5',
             messages: [
-                { role: 'system', content: '你是一个专业的时尚穿搭顾问，擅长根据用户的个人特征、天气情况和场合需求，提供精准、实用的穿搭建议。' },
+                { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
                 { role: 'user', content: prompt }
             ],
             temperature: 0.7,
@@ -398,35 +702,22 @@ async function callKimiAPI(apiKey) {
     }
     
     const data = await response.json();
-    return parseRecommendation(data.choices[0].message.content);
+    return data.choices[0].message.content;
 }
 
 function buildPrompt(context) {
-    const { user, weather, occasion, wardrobe, extraNotes } = context;
+    const { user, weather, location, occasion, wardrobe } = context;
     
-    const incomeMap = {
-        '5k-10k': '5000-10000元',
-        '10k-20k': '10000-20000元',
-        '20k-30k': '20000-30000元',
-        '30k+': '30000元以上'
-    };
+    const incomeMap = { '5k-10k': '5k-10k', '10k-20k': '10k-20k', '20k-30k': '20k-30k', '30k+': '30k+' };
+    const styleMap = { 'minimalist': '简约', 'classic': '经典', 'trendy': '潮流', 'business': '商务', 'casual': '休闲' };
     
-    const styleMap = {
-        'minimalist': '简约极简',
-        'classic': '经典优雅',
-        'trendy': '时尚潮流',
-        'business': '商务干练',
-        'casual': '休闲舒适'
-    };
+    const locationStr = `${location.city} ${location.district || ''} ${location.street || ''}`.trim();
     
-    let wardrobeText = '';
-    if (wardrobe.length > 0) {
-        wardrobeText = '\n\n用户现有衣橱：\n' + wardrobe.map(item => `- ${item.category}：${item.name}`).join('\n');
-    } else {
-        wardrobeText = '\n\n用户衣橱为空，请提供通用搭配建议。';
-    }
+    let wardrobeText = wardrobe.length > 0 
+        ? '\n用户衣橱：\n' + wardrobe.map(item => `- ${item.category}：${item.name}`).join('\n')
+        : '\n用户衣橱为空，提供通用建议。';
     
-    return `请为以下用户推荐今天的穿搭：
+    return `为用户推荐穿搭：
 
 【用户信息】
 - 昵称：${user.nickname}
@@ -436,142 +727,108 @@ function buildPrompt(context) {
 - 职业：${user.occupation || '未指定'}
 - 风格偏好：${styleMap[user.stylePreference] || '未指定'}
 
-【天气情况】
-- 城市：${weather.city}
-- 当前温度：${weather.temp}°C
+【位置天气】
+- 位置：${locationStr}
+- 温度：${weather.temp}°C（${weather.minTemp}°-${weather.maxTemp}°）
 - 天气：${weather.desc}
-- 温度范围：${weather.minTemp}°C - ${weather.maxTemp}°C
 
-【今天场合】
-${occasion}
-
-${extraNotes ? '【特殊要求】\n' + extraNotes : ''}
+【场合】${occasion}
 ${wardrobeText}
 
-请按以下格式输出：
-
-## 推荐搭配
-1. 【上装】具体衣物描述
-2. 【下装】具体衣物描述
-3. 【外套】具体衣物描述（如需要）
-4. 【鞋履】具体鞋款描述
-5. 【配饰】配饰建议
-
-## 推荐理由
-- 天气适配：说明为什么适合今天天气
-- 场合匹配：说明为什么适合这个场合
-- 风格契合：说明如何符合用户个人风格
-- 预算考量：说明是否符合用户消费水平
-
-## 备选方案
-提供1-2套备选搭配
-
-## 缺件建议
-如果衣橱缺少关键单品，给出购买建议`;
+请输出：
+1. 完整搭配（上装/下装/外套/鞋履/配饰）
+2. 推荐理由（天气适配/场合匹配/风格契合）
+3. 备选方案
+4. 缺件建议（如有）`;
 }
 
-function parseRecommendation(text) {
-    // 简单解析，实际可以做得更复杂
-    return {
-        raw: text,
-        outfit: extractSection(text, '推荐搭配'),
-        reasoning: extractSection(text, '推荐理由'),
-        alternatives: extractSection(text, '备选方案'),
-        shopping: extractSection(text, '缺件建议')
-    };
-}
-
-function extractSection(text, sectionName) {
-    const regex = new RegExp(`## ${sectionName}([\\s\\S]*?)(?=##|$)`, 'i');
-    const match = text.match(regex);
-    return match ? match[1].trim() : '';
-}
-
-function displayRecommendation(rec) {
-    const outfitList = document.getElementById('outfitList');
-    const reasoningText = document.getElementById('reasoningText');
-    
-    // 解析搭配项
-    const outfitItems = parseOutfitItems(rec.outfit);
-    
-    outfitList.innerHTML = outfitItems.map(item => `
-        <div class="outfit-item">
-            <div class="icon">${item.icon}</div>
-            <div class="info">
-                <h4>${item.category}</h4>
-                <p>${item.description}</p>
-            </div>
-        </div>
-    `).join('');
-    
-    // 显示推荐理由
-    reasoningText.innerHTML = formatReasoning(rec.reasoning);
-    
-    // 显示备选和购物建议（如果有）
-    if (rec.alternatives) {
-        reasoningText.innerHTML += '<h4 style="margin-top: 15px; color: #667eea;">🔄 备选方案</h4><p>' + rec.alternatives + '</p>';
-    }
-    if (rec.shopping) {
-        reasoningText.innerHTML += '<h4 style="margin-top: 15px; color: #667eea;">🛒 缺件建议</h4><p>' + rec.shopping + '</p>';
-    }
-    
+function displayRecommendation(text) {
+    document.getElementById('outfitList').innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; line-height: 1.6;">${text}</pre>`;
     document.getElementById('resultCard').classList.add('show');
 }
 
-function parseOutfitItems(outfitText) {
-    const items = [];
-    const lines = outfitText.split('\n').filter(line => line.trim());
+// ==================== 后台管理 ====================
+function openAdminLogin() {
+    document.getElementById('adminLoginModal').classList.add('show');
+}
+
+function closeAdminLogin() {
+    document.getElementById('adminLoginModal').classList.remove('show');
+    document.getElementById('adminLoginError').classList.remove('show');
+}
+
+function handleAdminLogin() {
+    const username = document.getElementById('adminUsername').value;
+    const password = document.getElementById('adminPassword').value;
+    const errorEl = document.getElementById('adminLoginError');
     
-    const categoryMap = {
-        '上装': { icon: '👔', category: '上装' },
-        '下装': { icon: '👖', category: '下装' },
-        '外套': { icon: '🧥', category: '外套' },
-        '鞋履': { icon: '👠', category: '鞋履' },
-        '配饰': { icon: '👜', category: '配饰' },
-        '内搭': { icon: '👕', category: '内搭' }
-    };
+    if (username !== CONFIG.ADMIN_USERNAME || password !== CONFIG.ADMIN_PASSWORD) {
+        errorEl.textContent = '账号或密码错误';
+        errorEl.classList.add('show');
+        return;
+    }
     
-    lines.forEach(line => {
-        for (const [key, value] of Object.entries(categoryMap)) {
-            if (line.includes(key) || line.includes(value.category)) {
-                const desc = line.replace(/^\d+\.\s*/, '').replace(/[【】]/g, '').trim();
-                items.push({
-                    icon: value.icon,
-                    category: value.category,
-                    description: desc
-                });
-                break;
-            }
+    isAdmin = true;
+    closeAdminLogin();
+    showAdminPage();
+}
+
+function showAdminPage() {
+    document.getElementById('authPage').style.display = 'none';
+    document.getElementById('mainApp').classList.remove('show');
+    document.getElementById('adminPage').classList.add('show');
+    
+    loadAdminData();
+}
+
+function closeAdmin() {
+    document.getElementById('adminPage').classList.remove('show');
+    showAuthPage();
+}
+
+function loadAdminData() {
+    // 统计用户数
+    let userCount = 0;
+    const userList = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('smart_outfit_user_')) {
+            userCount++;
+            const user = JSON.parse(localStorage.getItem(key));
+            userList.push({
+                phone: user.phone,
+                nickname: user.nickname || '-',
+                createdAt: new Date(user.createdAt).toLocaleDateString()
+            });
         }
-    });
+    }
     
-    return items.length > 0 ? items : [{ icon: '👔', category: '推荐搭配', description: outfitText }];
-}
-
-function formatReasoning(reasoningText) {
-    if (!reasoningText) return '<p>暂无推荐理由</p>';
+    document.getElementById('adminUserCount').textContent = userCount;
     
-    // 将文本转换为HTML
-    return reasoningText
-        .split('\n')
-        .filter(line => line.trim())
-        .map(line => {
-            if (line.startsWith('-')) {
-                return '<p style="margin-bottom: 8px;">• ' + line.substring(1).trim() + '</p>';
-            }
-            return '<p style="margin-bottom: 8px;">' + line + '</p>';
-        })
-        .join('');
+    // 加载API Key
+    const savedKey = Storage.get('admin_api_key');
+    if (savedKey) {
+        document.getElementById('adminApiKey').value = savedKey;
+    }
+    
+    // 加载用户列表
+    const listHtml = userList.map(u => `
+        <div style="padding: 10px; border-bottom: 1px solid #e9ecef;">
+            <div><strong>${u.nickname}</strong> (${u.phone})</div>
+            <div style="font-size: 12px; color: #666;">注册时间：${u.createdAt}</div>
+        </div>
+    `).join('');
+    document.getElementById('adminUserList').innerHTML = listHtml || '<p style="color: #999;">暂无用户</p>';
 }
 
-// ==================== 工具函数 ====================
-function formatDate(date) {
-    return new Date(date).toLocaleDateString('zh-CN');
-}
-
-// 页面加载完成后初始化
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
+function saveAdminConfig() {
+    const apiKey = document.getElementById('adminApiKey').value.trim();
+    if (!apiKey) {
+        alert('请输入API Key');
+        return;
+    }
+    
+    Storage.set('admin_api_key', apiKey);
+    alert('配置已保存！');
 }

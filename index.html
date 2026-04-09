@@ -3,22 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="frame-ancestors *;">
     <title>智能穿搭助手 - Smart Outfit</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-        
         .container {
             max-width: 480px;
             margin: 0 auto;
@@ -26,95 +19,56 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
+            min-height: 600px;
         }
-        
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
             text-align: center;
         }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header p { opacity: 0.9; font-size: 14px; }
         
-        .header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
-        }
-        
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        
-        .nav-tabs {
+        /* 登录注册 */
+        .auth-page { padding: 40px 30px; }
+        .auth-tabs {
             display: flex;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e9ecef;
         }
-        
-        .nav-tab {
+        .auth-tab {
             flex: 1;
             padding: 15px;
             text-align: center;
             cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-            font-size: 14px;
             color: #666;
+            font-weight: 500;
         }
-        
-        .nav-tab.active {
+        .auth-tab.active {
             color: #667eea;
-            border-bottom-color: #667eea;
-            background: white;
+            border-bottom: 2px solid #667eea;
+            margin-bottom: -2px;
         }
-        
-        .content {
-            padding: 25px;
-        }
-        
-        .section {
-            display: none;
-        }
-        
-        .section.active {
-            display: block;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
+        .form-group { margin-bottom: 20px; }
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            font-weight: 500;
             color: #333;
+            font-weight: 500;
             font-size: 14px;
         }
-        
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
+        .form-group input {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e9ecef;
             border-radius: 10px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+            font-size: 15px;
         }
-        
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
+        .form-group input:focus {
             outline: none;
             border-color: #667eea;
         }
-        
-        .form-group textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-        
         .btn {
             width: 100%;
             padding: 15px;
@@ -125,367 +79,501 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .error-msg {
+            color: #e74c3c;
+            font-size: 13px;
+            margin-top: 5px;
+            display: none;
+        }
+        .error-msg.show { display: block; }
+        
+        /* 主应用 */
+        .main-app { display: none; }
+        .main-app.show { display: block; }
+        
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .nav-tab.active {
+            color: #667eea;
+            background: white;
+            border-bottom: 2px solid #667eea;
         }
         
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        .section { display: none; padding: 20px; }
+        .section.active { display: block; }
+        
+        /* 天气卡片 */
+        .weather-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        .location-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .weather-main {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .weather-temp { font-size: 48px; font-weight: 300; }
+        .weather-info { flex: 1; }
+        .weather-desc { font-size: 18px; margin-bottom: 5px; }
+        .weather-range { font-size: 14px; opacity: 0.9; }
+        
+        /* 场合选择 */
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .tag {
+            padding: 10px 18px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .tag.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
         
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        /* 加载和结果 */
+        .loading { display: none; text-align: center; padding: 40px; }
+        .loading.show { display: block; }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         .result-card {
+            display: none;
             background: #f8f9fa;
             border-radius: 15px;
             padding: 20px;
             margin-top: 20px;
-            display: none;
         }
+        .result-card.show { display: block; }
         
-        .result-card.show {
-            display: block;
-        }
-        
-        .outfit-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: white;
-            border-radius: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .outfit-item .icon {
-            width: 40px;
-            height: 40px;
+        /* 个人资料 */
+        .profile-header {
+            text-align: center;
+            padding: 30px 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
+            color: white;
+        }
+        .avatar-upload {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            margin: 0 auto 15px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .avatar-upload img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-upload .placeholder { font-size: 40px; }
+        
+        /* 定位弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
             font-size: 18px;
-            margin-right: 15px;
+            font-weight: 600;
+            margin-bottom: 20px;
         }
-        
-        .outfit-item .info h4 {
-            font-size: 14px;
-            color: #333;
-            margin-bottom: 2px;
-        }
-        
-        .outfit-item .info p {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .reasoning {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 15px;
-        }
-        
-        .reasoning h4 {
-            font-size: 14px;
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-        
-        .reasoning p {
-            font-size: 13px;
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-        
-        .wardrobe-list {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+        .location-type {
+            display: flex;
             gap: 10px;
-            margin-top: 15px;
+            margin-bottom: 20px;
         }
-        
-        .wardrobe-item {
-            background: white;
+        .location-type-btn {
+            flex: 1;
+            padding: 12px;
             border: 2px solid #e9ecef;
             border-radius: 10px;
-            padding: 15px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
         }
-        
-        .wardrobe-item:hover {
-            border-color: #667eea;
-        }
-        
-        .wardrobe-item.selected {
+        .location-type-btn.active {
             border-color: #667eea;
             background: #f0f4ff;
         }
+        .province-select, .city-select, .district-select, .street-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
         
-        .weather-info {
+        /* 后台管理入口 */
+        .admin-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .weather-info .temp {
-            font-size: 48px;
-            font-weight: 300;
-            margin-right: 20px;
-        }
-        
-        .weather-info .details {
-            text-align: left;
-        }
-        
-        .weather-info .details .city {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        
-        .weather-info .details .desc {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-        
-        .tag {
-            display: inline-block;
-            padding: 5px 12px;
-            background: #e9ecef;
-            border-radius: 20px;
-            font-size: 12px;
-            color: #555;
-            margin: 5px 5px 0 0;
             cursor: pointer;
-            transition: all 0.2s;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
         }
         
-        .tag:hover,
-        .tag.selected {
-            background: #667eea;
-            color: white;
+        /* 后台管理 */
+        .admin-page {
+            display: none;
+            padding: 30px;
         }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
+        .admin-page.show { display: block; }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
         }
-        
-        .loading::after {
-            content: '';
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #667eea;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .api-config {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
             border-radius: 10px;
-            padding: 15px;
             margin-bottom: 20px;
         }
-        
-        .api-config h4 {
-            color: #856404;
-            font-size: 14px;
-            margin-bottom: 10px;
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
         }
-        
-        .hidden {
-            display: none !important;
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>👔 智能穿搭助手</h1>
-            <p>基于天气、场合、个人风格的智能搭配推荐</p>
+        <!-- 登录注册页面 -->
+        <div class="auth-page" id="authPage">
+            <div class="header">
+                <h1>👗 智能穿搭助手</h1>
+                <p>AI-powered outfit recommendations</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login">登录</div>
+                <div class="auth-tab" data-tab="register">注册</div>
+            </div>
+            
+            <!-- 登录表单 -->
+            <div class="auth-form" id="loginForm">
+                <div class="form-group">
+                    <label>手机号</label>
+                    <input type="tel" id="loginPhone" placeholder="请输入手机号" maxlength="11">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码">
+                </div>
+                <div class="error-msg" id="loginError"></div>
+                <button class="btn" onclick="handleLogin()">登录</button>
+            </div>
+            
+            <!-- 注册表单 -->
+            <div class="auth-form" id="registerForm" style="display: none;">
+                <div class="form-group">
+                    <label>手机号</label>
+                    <input type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="regPassword" placeholder="请设置密码（至少6位）">
+                </div>
+                <div class="form-group">
+                    <label>确认密码</label>
+                    <input type="password" id="regConfirmPassword" placeholder="请再次输入密码">
+                </div>
+                <div class="error-msg" id="regError"></div>
+                <button class="btn" onclick="handleRegister()">注册</button>
+            </div>
         </div>
         
-        <div class="nav-tabs">
-            <div class="nav-tab active" data-tab="recommend">智能推荐</div>
-            <div class="nav-tab" data-tab="wardrobe">我的衣橱</div>
-            <div class="nav-tab" data-tab="profile">个人资料</div>
-            <div class="nav-tab" data-tab="settings">设置</div>
-        </div>
-        
-        <div class="content">
+        <!-- 主应用 -->
+        <div class="main-app" id="mainApp">
+            <div class="nav-tabs">
+                <div class="nav-tab active" data-tab="recommend">智能推荐</div>
+                <div class="nav-tab" data-tab="wardrobe">我的衣橱</div>
+                <div class="nav-tab" data-tab="profile">个人资料</div>
+            </div>
+            
             <!-- 智能推荐 -->
             <div class="section active" id="recommend">
-                <div class="api-config" id="apiConfig">
-                    <h4>⚠️ 请先配置API</h4>
-                    <p style="font-size: 12px; color: #856404;">需要配置Kimi API Key才能使用智能推荐功能</p>
-                </div>
-                
-                <div class="weather-info" id="weatherInfo">
-                    <div class="temp">--°</div>
-                    <div class="details">
-                        <div class="city">获取天气中...</div>
-                        <div class="desc">--</div>
+                <div class="weather-card">
+                    <div class="location-selector" onclick="openLocationModal()">
+                        <span>📍</span>
+                        <span id="currentLocation">正在定位...</span>
+                        <span>▼</span>
+                    </div>
+                    <div class="weather-main">
+                        <div class="weather-temp" id="weatherTemp">--°</div>
+                        <div class="weather-info">
+                            <div class="weather-desc" id="weatherDesc">--</div>
+                            <div class="weather-range" id="weatherRange">--</div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label>今天有什么安排？</label>
-                    <div id="occasionTags">
-                        <span class="tag" data-value="important_meeting">重要会议</span>
-                        <span class="tag" data-value="daily_work">普通上班</span>
-                        <span class="tag" data-value="client_visit">客户拜访</span>
-                        <span class="tag" data-value="party">派对聚会</span>
-                        <span class="tag" data-value="date">约会</span>
-                        <span class="tag" data-value="interview">面试</span>
-                        <span class="tag" data-value="casual">休闲日常</span>
+                <div class="occasion-section">
+                    <div class="section-title">今天是什么场合？</div>
+                    <div class="tag-container" id="occasionTags">
+                        <div class="tag" data-value="important_meeting">重要会议</div>
+                        <div class="tag" data-value="daily_work">普通上班</div>
+                        <div class="tag" data-value="client_visit">客户拜访</div>
+                        <div class="tag" data-value="party">派对聚会</div>
+                        <div class="tag" data-value="date">约会</div>
+                        <div class="tag" data-value="interview">面试</div>
+                        <div class="tag" data-value="casual">休闲日常</div>
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label>补充说明（可选）</label>
-                    <textarea id="extraNotes" placeholder="例如：必须用某件衣服、不想穿裙子、要显得专业但不沉闷..."></textarea>
+                <button class="btn recommend-btn" onclick="getRecommendation()">获取穿搭建议</button>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>AI正在为你搭配...</p>
                 </div>
-                
-                <button class="btn" id="recommendBtn" onclick="getRecommendation()">
-                    获取穿搭建议
-                </button>
-                
-                <div class="loading hidden" id="loading">正在分析...</div>
                 
                 <div class="result-card" id="resultCard">
-                    <h3 style="margin-bottom: 15px; color: #333;">👔 推荐搭配</h3>
                     <div id="outfitList"></div>
-                    <div class="reasoning">
-                        <h4>📍 推荐理由</h4>
-                        <div id="reasoningText"></div>
-                    </div>
+                    <div id="reasoningText"></div>
                 </div>
             </div>
             
             <!-- 我的衣橱 -->
             <div class="section" id="wardrobe">
+                <h3 style="margin-bottom: 15px;">添加衣物</h3>
                 <div class="form-group">
-                    <label>添加衣物</label>
-                    <textarea id="newClothes" placeholder="描述你的衣服，例如：
-- 藏青色西装外套，修身款，适合正式场合
-- 白色丝质衬衫，简约款
-- 黑色阔腿裤，高腰"></textarea>
+                    <textarea id="newClothes" rows="4" placeholder="描述你的衣物，例如：
+藏青色西装外套
+白色丝质衬衫
+黑色阔腿裤" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px; resize: vertical;"></textarea>
                 </div>
-                <button class="btn" onclick="addToWardrobe()">添加到衣橱</button>
+                <button class="btn" onclick="addToWardrobe()" style="margin-bottom: 20px;">添加到衣橱</button>
                 
-                <h3 style="margin-top: 25px; margin-bottom: 15px; color: #333;">我的衣橱</h3>
-                <div class="wardrobe-list" id="wardrobeList"></div>
+                <h3 style="margin-bottom: 15px;">我的衣橱</h3>
+                <div id="wardrobeList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
             </div>
             
             <!-- 个人资料 -->
             <div class="section" id="profile">
-                <div class="form-group">
-                    <label>昵称</label>
-                    <input type="text" id="nickname" placeholder="怎么称呼你？">
+                <div class="profile-header">
+                    <div class="avatar-upload" onclick="document.getElementById('avatarInput').click()">
+                        <img id="avatarImg" style="display: none;">
+                        <span class="placeholder" id="avatarPlaceholder">👤</span>
+                    </div>
+                    <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
+                    <div class="profile-name" id="profileName">未设置昵称</div>
+                    <div style="font-size: 14px; opacity: 0.9;" id="profilePhone">--</div>
                 </div>
-                <div class="form-group">
-                    <label>性别</label>
-                    <select id="gender">
-                        <option value="">请选择</option>
-                        <option value="female">女</option>
-                        <option value="male">男</option>
+                
+                <div style="padding: 20px;">
+                    <div class="form-group">
+                        <label>昵称</label>
+                        <input type="text" id="editNickname" placeholder="设置你的昵称">
+                    </div>
+                    <div class="form-group">
+                        <label>性别</label>
+                        <select id="editGender" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
+                            <option value="">请选择</option>
+                            <option value="male">男</option>
+                            <option value="female">女</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>年龄段</label>
+                        <select id="editAgeRange" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
+                            <option value="">请选择</option>
+                            <option value="18-25">18-25岁</option>
+                            <option value="26-35">26-35岁</option>
+                            <option value="36-45">36-45岁</option>
+                            <option value="46+">46岁以上</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>月收入</label>
+                        <select id="editIncome" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
+                            <option value="">请选择</option>
+                            <option value="5k-10k">5k-10k</option>
+                            <option value="10k-20k">10k-20k</option>
+                            <option value="20k-30k">20k-30k</option>
+                            <option value="30k+">30k+</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>职业</label>
+                        <input type="text" id="editOccupation" placeholder="例如：产品经理、设计师">
+                    </div>
+                    <div class="form-group">
+                        <label>风格偏好</label>
+                        <select id="editStyle" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
+                            <option value="">请选择</option>
+                            <option value="minimalist">简约极简</option>
+                            <option value="classic">经典优雅</option>
+                            <option value="trendy">时尚潮流</option>
+                            <option value="business">商务干练</option>
+                            <option value="casual">休闲舒适</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="saveProfile()">保存资料</button>
+                    <button class="btn" onclick="logout()" style="margin-top: 10px; background: #6c757d;">退出登录</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 定位选择弹窗 -->
+        <div class="modal" id="locationModal">
+            <div class="modal-content">
+                <div class="modal-header">选择位置</div>
+                <div class="location-type">
+                    <div class="location-type-btn active" onclick="selectLocationType('auto')">📍 自动定位</div>
+                    <div class="location-type-btn" onclick="selectLocationType('manual')">✏️ 手动选择</div>
+                </div>
+                
+                <!-- 自动定位 -->
+                <div id="autoLocationSection">
+                    <button class="btn" onclick="getCurrentLocation()">获取当前位置</button>
+                    <div id="locationStatus" style="margin-top: 15px; color: #666; text-align: center;"></div>
+                </div>
+                
+                <!-- 手动选择 -->
+                <div id="manualLocationSection" style="display: none;">
+                    <select class="province-select" id="provinceSelect" onchange="onProvinceChange()">
+                        <option value="">选择省份</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label>年龄段</label>
-                    <select id="ageRange">
-                        <option value="">请选择</option>
-                        <option value="18-25">18-25岁</option>
-                        <option value="26-30">26-30岁</option>
-                        <option value="31-35">31-35岁</option>
-                        <option value="36-40">36-40岁</option>
-                        <option value="40+">40岁以上</option>
+                    <select class="city-select" id="citySelect" onchange="onCityChange()">
+                        <option value="">选择城市</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label>月收入区间</label>
-                    <select id="income">
-                        <option value="">请选择</option>
-                        <option value="5k-10k">5,000-10,000元</option>
-                        <option value="10k-20k">10,000-20,000元</option>
-                        <option value="20k-30k">20,000-30,000元</option>
-                        <option value="30k+">30,000元以上</option>
+                    <select class="district-select" id="districtSelect">
+                        <option value="">选择区县</option>
                     </select>
+                    <input type="text" class="street-input" id="streetInput" placeholder="输入街道/小区（可选）">
                 </div>
-                <div class="form-group">
-                    <label>职业类型</label>
-                    <select id="occupation">
-                        <option value="">请选择</option>
-                        <option value="office">办公室白领</option>
-                        <option value="creative">创意/设计</option>
-                        <option value="tech">技术/互联网</option>
-                        <option value="finance">金融/法律</option>
-                        <option value="sales">销售/商务</option>
-                        <option value="freelance">自由职业</option>
-                        <option value="student">学生</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>个人风格偏好</label>
-                    <select id="stylePreference">
-                        <option value="">请选择</option>
-                        <option value="minimalist">简约极简</option>
-                        <option value="classic">经典优雅</option>
-                        <option value="trendy">时尚潮流</option>
-                        <option value="business">商务干练</option>
-                        <option value="casual">休闲舒适</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>所在城市</label>
-                    <input type="text" id="city" placeholder="例如：广州">
-                </div>
-                <button class="btn" onclick="saveProfile()">保存资料</button>
+                
+                <button class="btn" onclick="confirmLocation()" style="margin-top: 20px;">确定</button>
+                <button class="btn" onclick="closeLocationModal()" style="margin-top: 10px; background: #6c757d;">取消</button>
+            </div>
+        </div>
+        
+        <!-- 后台管理页面 -->
+        <div class="admin-page" id="adminPage">
+            <div class="admin-header">
+                <h2>🏢 管理后台</h2>
+                <button class="btn" onclick="closeAdmin()" style="width: auto; padding: 10px 20px;">返回</button>
             </div>
             
-            <!-- 设置 -->
-            <div class="section" id="settings">
+            <div class="stat-card">
+                <div style="color: #666; margin-bottom: 5px;">注册用户</div>
+                <div class="stat-number" id="adminUserCount">0</div>
+            </div>
+            
+            <div class="config-section">
+                <h3 style="margin-bottom: 15px;">API配置</h3>
                 <div class="form-group">
                     <label>Kimi API Key</label>
-                    <input type="password" id="apiKey" placeholder="输入你的Kimi API Key">
-                    <p style="font-size: 12px; color: #666; margin-top: 5px;">你的API Key仅存储在本地浏览器中</p>
+                    <input type="password" id="adminApiKey" placeholder="输入API Key">
                 </div>
-                <button class="btn" onclick="saveSettings()">保存设置</button>
-                
-                <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
-                    <h4 style="margin-bottom: 10px; color: #333;">关于</h4>
-                    <p style="font-size: 12px; color: #666; line-height: 1.6;">
-                        智能穿搭助手 v1.0<br>
-                        基于Kimi K2.5大模型<br>
-                        数据本地存储，保护隐私
-                    </p>
-                </div>
+                <button class="btn" onclick="saveAdminConfig()">保存配置</button>
+            </div>
+            
+            <div class="config-section">
+                <h3 style="margin-bottom: 15px;">用户列表</h3>
+                <div id="adminUserList"></div>
             </div>
         </div>
     </div>
     
+    <!-- 后台管理入口 -->
+    <div class="admin-link" onclick="openAdminLogin()" title="管理后台">⚙️</div>
+    
+    <!-- 后台登录弹窗 -->
+    <div class="modal" id="adminLoginModal">
+        <div class="modal-content">
+            <div class="modal-header">管理员登录</div>
+            <div class="form-group">
+                <label>账号</label>
+                <input type="text" id="adminUsername" placeholder="请输入管理员账号">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="adminPassword" placeholder="请输入管理员密码">
+            </div>
+            <div class="error-msg" id="adminLoginError"></div>
+            <button class="btn" onclick="handleAdminLogin()">登录</button>
+            <button class="btn" onclick="closeAdminLogin()" style="margin-top: 10px; background: #6c757d;">取消</button>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
