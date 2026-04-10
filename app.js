@@ -8,7 +8,12 @@ const CONFIG = {
     ADMIN_PASSWORD: 'admin123',
     
     // 默认API Key（管理员可修改）
-    DEFAULT_API_KEY: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', // 需要管理员配置
+    DEFAULT_API_KEY: '', // 需要管理员配置
+    
+    // API提供商配置
+    API_PROVIDER: 'aliyun', // 'aliyun' 或 'kimi'
+    ALIYUN_API_URL: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+    KIMI_API_URL: 'https://api.moonshot.cn/v1/chat/completions',
     
     // 设备注册限制
     MAX_REGISTRATIONS_PER_DEVICE: 5,
@@ -685,9 +690,67 @@ async function callAIAPI(apiKey) {
         wardrobe: currentUser.wardrobe || []
     });
     
-    console.log('Calling API with key prefix:', apiKey.substring(0, 15) + '...');
+    // 获取API提供商设置
+    const provider = Storage.get('api_provider', 'aliyun');
+    console.log('Using API provider:', provider);
+    console.log('API Key prefix:', apiKey.substring(0, 10) + '...');
     
-    const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+    if (provider === 'kimi') {
+        return await callKimiAPI(apiKey, prompt);
+    } else {
+        return await callAliyunAPI(apiKey, prompt);
+    }
+}
+
+async function callAliyunAPI(apiKey, prompt) {
+    console.log('Calling Aliyun API...');
+    
+    const response = await fetch(CONFIG.ALIYUN_API_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify({
+            model: 'qwen-max',
+            input: {
+                messages: [
+                    { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
+                    { role: 'user', content: prompt }
+                ]
+            },
+            parameters: {
+                temperature: 0.7,
+                max_tokens: 2000,
+                result_format: 'message'
+            }
+        })
+    });
+    
+    console.log('Aliyun API response status:', response.status);
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Aliyun API error:', errorText);
+        let errorMsg = 'API请求失败';
+        try {
+            const errorJson = JSON.parse(errorText);
+            errorMsg = errorJson.message || errorJson.error?.message || errorText;
+        } catch (e) {
+            errorMsg = errorText || `HTTP ${response.status}`;
+        }
+        throw new Error(errorMsg);
+    }
+    
+    const data = await response.json();
+    console.log('Aliyun API response:', data);
+    return data.output?.choices?.[0]?.message?.content || data.output?.text || '推荐生成失败';
+}
+
+async function callKimiAPI(apiKey, prompt) {
+    console.log('Calling Kimi API...');
+    
+    const response = await fetch(CONFIG.KIMI_API_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -704,11 +767,11 @@ async function callAIAPI(apiKey) {
         })
     });
     
-    console.log('API response status:', response.status);
+    console.log('Kimi API response status:', response.status);
     
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('API error response:', errorText);
+        console.error('Kimi API error:', errorText);
         let errorMsg = 'API请求失败';
         try {
             const errorJson = JSON.parse(errorText);
@@ -720,7 +783,8 @@ async function callAIAPI(apiKey) {
     }
     
     const data = await response.json();
-    return data.choices[0].message.content;
+    console.log('Kimi API response:', data);
+    return data.choices?.[0]?.message?.content || '推荐生成失败';
 }
 
 function buildPrompt(context) {
@@ -830,6 +894,13 @@ function loadAdminData() {
         document.getElementById('adminApiKey').value = savedKey;
     }
     
+    // 加载API提供商设置
+    const savedProvider = Storage.get('api_provider', 'aliyun');
+    const providerSelect = document.getElementById('apiProvider');
+    if (providerSelect) {
+        providerSelect.value = savedProvider;
+    }
+    
     // 加载用户列表
     const listHtml = userList.map(u => `
         <div style="padding: 10px; border-bottom: 1px solid #e9ecef;">
@@ -848,5 +919,12 @@ function saveAdminConfig() {
     }
     
     Storage.set('admin_api_key', apiKey);
+    
+    // 保存API提供商选择
+    const providerSelect = document.getElementById('apiProvider');
+    if (providerSelect) {
+        Storage.set('api_provider', providerSelect.value);
+    }
+    
     alert('配置已保存！');
 }
