@@ -582,6 +582,16 @@
         </div>
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script>
+        // 强制清除旧版本缓存，确保使用阿里云百炼
+        (function() {
+            const savedProvider = localStorage.getItem('smart_outfit_api_provider');
+            if (!savedProvider || savedProvider === 'kimi') {
+                localStorage.setItem('smart_outfit_api_provider', 'aliyun');
+                console.log('已强制设置API提供商为阿里云百炼');
+            }
+        })();
+    </script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
