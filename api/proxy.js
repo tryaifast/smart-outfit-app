@@ -22,11 +22,26 @@ module.exports = async (req, res) => {
             body += chunk;
         }
         
-        const { provider, apiKey, messages, model, temperature, max_tokens } = JSON.parse(body);
+        console.log('Raw body:', body);
+        
+        let parsedBody;
+        try {
+            parsedBody = JSON.parse(body);
+        } catch (e) {
+            console.log('Parse error:', e.message);
+            return res.status(400).json({ error: 'Invalid JSON', raw: body });
+        }
+        
+        console.log('Parsed body:', JSON.stringify(parsedBody, null, 2));
+        
+        const { provider, apiKey, messages, model, temperature, max_tokens } = parsedBody;
+
+        console.log('Extracted apiKey:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
+        console.log('Provider:', provider);
 
         // 验证必填参数
         if (!apiKey) {
-            return res.status(400).json({ error: 'Missing apiKey in request body' });
+            return res.status(400).json({ error: 'Missing apiKey in request body', received: parsedBody });
         }
 
         if (!messages || !Array.isArray(messages)) {
@@ -69,12 +84,14 @@ module.exports = async (req, res) => {
                     'Content-Type': 'application/json',
                     'X-DashScope-API-Key': apiKey
                 };
+                console.log('Using X-DashScope-API-Key header');
             } else {
                 // 标准 Key 格式：使用 Bearer
                 headers = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 };
+                console.log('Using Authorization Bearer header');
             }
         } else {
             headers = {
@@ -83,6 +100,9 @@ module.exports = async (req, res) => {
             };
         }
 
+        console.log('Request headers:', JSON.stringify(headers, null, 2));
+        console.log('Request body:', JSON.stringify(requestBody, null, 2));
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: headers,
@@ -90,12 +110,14 @@ module.exports = async (req, res) => {
         });
 
         const data = await response.json();
+        console.log('Aliyun response:', JSON.stringify(data, null, 2));
 
         // 设置 CORS 头
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Content-Type', 'application/json');
         return res.status(response.status).json(data);
     } catch (error) {
+        console.error('Proxy error:', error);
         res.setHeader('Access-Control-Allow-Origin', '*');
         return res.status(500).json({ error: error.message, stack: error.stack });
     }
