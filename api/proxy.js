@@ -16,7 +16,13 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { provider, apiKey, messages, model, temperature, max_tokens } = req.body;
+        // 手动解析请求体
+        let body = '';
+        for await (const chunk of req) {
+            body += chunk;
+        }
+        
+        const { provider, apiKey, messages, model, temperature, max_tokens } = JSON.parse(body);
 
         // 验证必填参数
         if (!apiKey) {
