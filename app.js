@@ -779,43 +779,50 @@ async function callAliyunAPI(apiKey, prompt) {
 }
 
 async function callKimiAPI(apiKey, prompt) {
-    console.log('Calling Kimi API via proxy...');
+    console.log('Calling Kimi API directly...');
+    console.log('API Key prefix:', apiKey.substring(0, 15) + '...');
     
-    // 使用 Vercel Edge Function 代理，避免 CORS 问题
-    const proxyUrl = window.location.origin + '/api/proxy';
+    // 直接调用 Kimi API（支持 CORS）
+    const apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
     
     try {
-        const response = await fetch(proxyUrl, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                provider: 'kimi',
-                apiKey: apiKey,
+                model: 'kimi-k2.5',
                 messages: [
                     { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
                     { role: 'user', content: prompt }
                 ],
-                model: 'kimi-k2.5',
                 temperature: 0.7,
                 max_tokens: 2000
             })
         });
         
-        console.log('Proxy response status:', response.status);
+        console.log('Kimi API response status:', response.status);
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Proxy error:', errorText);
-            throw new Error('API请求失败: ' + errorText);
+            console.error('Kimi API error:', errorText);
+            let errorMsg = 'API请求失败';
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMsg = errorJson.error?.message || errorJson.message || errorText;
+            } catch (e) {
+                errorMsg = errorText || `HTTP ${response.status}`;
+            }
+            throw new Error(errorMsg);
         }
         
         const data = await response.json();
-        console.log('Proxy response:', data);
+        console.log('Kimi API response:', data);
         
         if (data.error) {
-            throw new Error(data.error.message || data.error);
+            throw new Error(data.error.message || 'API调用失败');
         }
         
         return data.choices?.[0]?.message?.content || '推荐生成失败';
