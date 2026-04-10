@@ -646,18 +646,24 @@ async function getRecommendation() {
     
     // 获取管理员配置的API Key
     const apiKey = Storage.get('admin_api_key');
+    console.log('API Key from storage:', apiKey ? apiKey.substring(0, 10) + '...' : 'null');
+    
     if (!apiKey) {
         alert('系统配置错误：API Key未设置，请联系管理员');
         return;
     }
     
+    // 清理API Key（去除首尾空格）
+    const cleanApiKey = apiKey.trim();
+    
     document.getElementById('loading').classList.add('show');
     document.getElementById('resultCard').classList.remove('show');
     
     try {
-        const recommendation = await callAIAPI(apiKey);
+        const recommendation = await callAIAPI(cleanApiKey);
         displayRecommendation(recommendation);
     } catch (error) {
+        console.error('Recommendation error:', error);
         alert('获取推荐失败：' + error.message);
     } finally {
         document.getElementById('loading').classList.remove('show');
@@ -679,11 +685,13 @@ async function callAIAPI(apiKey) {
         wardrobe: currentUser.wardrobe || []
     });
     
+    console.log('Calling API with key prefix:', apiKey.substring(0, 15) + '...');
+    
     const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'Authorization': 'Bearer ' + apiKey
         },
         body: JSON.stringify({
             model: 'kimi-k2.5',
@@ -696,9 +704,19 @@ async function callAIAPI(apiKey) {
         })
     });
     
+    console.log('API response status:', response.status);
+    
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'API请求失败');
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        let errorMsg = 'API请求失败';
+        try {
+            const errorJson = JSON.parse(errorText);
+            errorMsg = errorJson.error?.message || errorJson.message || errorText;
+        } catch (e) {
+            errorMsg = errorText || `HTTP ${response.status}`;
+        }
+        throw new Error(errorMsg);
     }
     
     const data = await response.json();
