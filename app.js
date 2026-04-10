@@ -707,98 +707,104 @@ async function callAIAPI(apiKey) {
 }
 
 async function callAliyunAPI(apiKey, prompt) {
-    console.log('Calling Aliyun API...');
-    console.log('API URL:', CONFIG.ALIYUN_API_URL);
+    console.log('Calling Aliyun API via proxy...');
     console.log('API Key prefix:', apiKey.substring(0, 15) + '...');
     
+    // 使用 Vercel Edge Function 代理，避免 CORS 问题
+    const proxyUrl = window.location.origin + '/api/proxy';
+    
     try {
-        const response = await fetch(CONFIG.ALIYUN_API_URL, {
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + apiKey
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
+                provider: 'aliyun',
+                apiKey: apiKey,
+                messages: [
+                    { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
+                    { role: 'user', content: prompt }
+                ],
                 model: 'qwen-max',
-                input: {
-                    messages: [
-                        { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
-                        { role: 'user', content: prompt }
-                    ]
-                },
-                parameters: {
-                    temperature: 0.7,
-                    max_tokens: 2000,
-                    result_format: 'message'
-                }
+                temperature: 0.7,
+                max_tokens: 2000
             })
         });
         
-        console.log('Aliyun API response status:', response.status);
+        console.log('Proxy response status:', response.status);
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Aliyun API error:', errorText);
-            let errorMsg = 'API请求失败';
-            try {
-                const errorJson = JSON.parse(errorText);
-                errorMsg = errorJson.message || errorJson.error?.message || errorText;
-            } catch (e) {
-                errorMsg = errorText || `HTTP ${response.status}`;
-            }
-            throw new Error(errorMsg);
+            console.error('Proxy error:', errorText);
+            throw new Error('API请求失败: ' + errorText);
         }
         
         const data = await response.json();
-        console.log('Aliyun API response:', data);
+        console.log('Proxy response:', data);
+        
+        if (data.error) {
+            throw new Error(data.error.message || data.error);
+        }
+        
         return data.output?.choices?.[0]?.message?.content || data.output?.text || '推荐生成失败';
     } catch (error) {
         console.error('Fetch error:', error);
         if (error.message === 'Failed to fetch') {
-            throw new Error('网络请求失败，可能是CORS跨域问题或网络连接问题。请检查：1) API Key是否正确 2) 网络连接是否正常');
+            throw new Error('网络请求失败，请检查网络连接');
         }
         throw error;
     }
 }
 
 async function callKimiAPI(apiKey, prompt) {
-    console.log('Calling Kimi API...');
+    console.log('Calling Kimi API via proxy...');
     
-    const response = await fetch(CONFIG.KIMI_API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + apiKey
-        },
-        body: JSON.stringify({
-            model: 'kimi-k2.5',
-            messages: [
-                { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
-                { role: 'user', content: prompt }
-            ],
-            temperature: 0.7,
-            max_tokens: 2000
-        })
-    });
+    // 使用 Vercel Edge Function 代理，避免 CORS 问题
+    const proxyUrl = window.location.origin + '/api/proxy';
     
-    console.log('Kimi API response status:', response.status);
-    
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Kimi API error:', errorText);
-        let errorMsg = 'API请求失败';
-        try {
-            const errorJson = JSON.parse(errorText);
-            errorMsg = errorJson.error?.message || errorJson.message || errorText;
-        } catch (e) {
-            errorMsg = errorText || `HTTP ${response.status}`;
+    try {
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                provider: 'kimi',
+                apiKey: apiKey,
+                messages: [
+                    { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
+                    { role: 'user', content: prompt }
+                ],
+                model: 'kimi-k2.5',
+                temperature: 0.7,
+                max_tokens: 2000
+            })
+        });
+        
+        console.log('Proxy response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Proxy error:', errorText);
+            throw new Error('API请求失败: ' + errorText);
         }
-        throw new Error(errorMsg);
+        
+        const data = await response.json();
+        console.log('Proxy response:', data);
+        
+        if (data.error) {
+            throw new Error(data.error.message || data.error);
+        }
+        
+        return data.choices?.[0]?.message?.content || '推荐生成失败';
+    } catch (error) {
+        console.error('Fetch error:', error);
+        if (error.message === 'Failed to fetch') {
+            throw new Error('网络请求失败，请检查网络连接');
+        }
+        throw error;
     }
-    
-    const data = await response.json();
-    console.log('Kimi API response:', data);
-    return data.choices?.[0]?.message?.content || '推荐生成失败';
 }
 
 function buildPrompt(context) {
