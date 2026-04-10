@@ -898,8 +898,12 @@ function loadAdminData() {
         document.getElementById('adminApiKey').value = savedKey;
     }
     
-    // 加载API提供商设置
-    const savedProvider = Storage.get('api_provider', 'aliyun');
+    // 加载API提供商设置（强制默认阿里云百炼）
+    let savedProvider = Storage.get('api_provider');
+    if (!savedProvider) {
+        savedProvider = 'aliyun';
+        Storage.set('api_provider', savedProvider);
+    }
     const providerSelect = document.getElementById('apiProvider');
     if (providerSelect) {
         providerSelect.value = savedProvider;
