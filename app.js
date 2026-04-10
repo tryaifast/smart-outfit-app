@@ -1,4 +1,4 @@
-const CONFIG={version:'8',storagePrefix:'smart_outfit_',maxWardrobeItems:50,maxUsersPerDevice:5};
+const CONFIG={version:'9',storagePrefix:'smart_outfit_',maxWardrobeItems:50,maxUsersPerDevice:5};
 const Storage={get(k){try{return JSON.parse(localStorage.getItem(CONFIG.storagePrefix+k)||'null')}catch(e){return null}},set(k,v){localStorage.setItem(CONFIG.storagePrefix+k,JSON.stringify(v))},remove(k){localStorage.removeItem(CONFIG.storagePrefix+k)}};
 const Utils={id:()=>Date.now().toString(36)+Math.random().toString(36).slice(2),toast:(m,t='info')=>{const e=document.createElement('div');e.className=`toast toast-${t}`;e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),3000)},nav:(p)=>{document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(p)?.classList.add('active')}};
 
@@ -6,9 +6,7 @@ const API={
     async call(apiKey,messages,opt={}){
         const body={model:opt.model||'qwen-max',input:{messages},parameters:{temperature:opt.temperature||0.7,max_tokens:opt.max_tokens||2000,result_format:'message'}};
         const headers=apiKey.startsWith('sk-sp-')?{'Content-Type':'application/json','X-DashScope-API-Key':apiKey}:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`};
-        console.log('[API] Request:',{keyPrefix:apiKey.slice(0,10)+'...'});
         const r=await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',{method:'POST',headers,body:JSON.stringify(body),mode:'cors'});
-        console.log('[API] Response:',r.status);
         if(!r.ok){const txt=await r.text();throw new Error(`HTTP ${r.status}: ${txt}`)}
         return await r.json();
     },
@@ -22,7 +20,7 @@ const API={
         if(!cfg.apiKey)return this.fallback(profile,wardrobe,weather,occasion);
         const items=wardrobe.map(i=>`- ${i.category}:${i.name}`).join('\n');
         const msgs=[{role:'system',content:'你是专业穿搭顾问'},{role:'user',content:`推荐穿搭:\n用户:${profile.nickname||'用户'}\n天气:${weather.city||'?'} ${weather.temperature||'?'}°C\n场景:${occasion}\n衣橱:${items||'(暂无)'}\n给出:1.风格 2.搭配 3.理由`}];
-        try{return await this.call(cfg.apiKey,msgs,{temperature:0.8,max_tokens:2000});}catch(e){console.log('[API] Fallback');return this.fallback(profile,wardrobe,weather,occasion);}
+        try{return await this.call(cfg.apiKey,msgs,{temperature:0.8,max_tokens:2000});}catch(e){return this.fallback(profile,wardrobe,weather,occasion);}
     }
 };
 
@@ -32,14 +30,13 @@ const User={get current(){return Storage.get('current_user')},set current(u){Sto
 
 const Wardrobe={get items(){return User.current?.wardrobe||[]},add(item){const u=User.current;if(!u)return{ok:false};item.id=Utils.id();item.createdAt=new Date().toISOString();u.wardrobe.push(item);if(u.wardrobe.length>CONFIG.maxWardrobeItems)u.wardrobe.shift();User.save(u);User.current=u;return{ok:true}},remove(id){const u=User.current;if(!u)return{ok:false};u.wardrobe=u.wardrobe.filter(x=>x.id!==id);User.save(u);User.current=u;return{ok:true}}};
 
-document.addEventListener('DOMContentLoaded',()=>{if(!User.current){Utils.nav('login-page');return}Utils.nav('home-page');loadHome();
-document.getElementById('login-btn')?.addEventListener('click',()=>{const p=document.getElementById('login-phone')?.value.trim();const w=document.getElementById('login-password')?.value;if(!p||!w)return Utils.toast('请填写信息','error');const r=User.login(p,w);if(r.ok){Utils.toast('登录成功');Utils.nav('home-page');loadHome()}else{Utils.toast(r.msg,'error')}});
-document.getElementById('register-btn')?.addEventListener('click',()=>{const p=document.getElementById('reg-phone')?.value.trim();const w=document.getElementById('reg-password')?.value;const c=document.getElementById('reg-confirm')?.value;if(!p||!w||!c)return Utils.toast('请填写信息','error');if(w!==c)return Utils.toast('密码不一致','error');const r=User.register(p,w);if(r.ok){Utils.toast('注册成功');showLogin()}else{Utils.toast(r.msg,'error')}});
-document.getElementById('show-register')?.addEventListener('click',showRegister);
-document.getElementById('show-login')?.addEventListener('click',showLogin);
-document.querySelectorAll('[data-page]').forEach(el=>el.addEventListener('click',()=>Utils.nav(el.dataset.page)));
-document.getElementById('logout-btn')?.addEventListener('click',()=>{User.logout();Utils.nav('login-page')});
-document.getElementById('save-profile-btn')?.addEventListener('click',()=>{const r=User.update({nickname:document.getElementById('profile-nickname')?.value,gender:document.getElementById('profile-gender')?.value,ageGroup:document.getElementById('profile-age')?.value,occupation:document.getElementById('profile-occupation')?.value,income:document.getElementById('profile-income')?.value,stylePreference:document.getElementById('profile-style')?.value,city:document.getElementById('profile-city')?.value});Utils.toast(r.ok?'保存成功':'保存失败',r.ok?'info':'error')});
-document.getElementById('get-weather-btn')?.addEventListener('click',async()=>{const c=User.current?.city;if(!c)return Utils.toast('请先设置城市','error');try{const w=await Weather.get(c);document.getElementById('weather-info')?.textContent=`${w.city} ${w.temperature}°C ${w.condition}`;Utils.toast('天气更新成功')}catch(e){Utils.toast('获取天气失败','error')}});
-document.getElementById('add-wardrobe-btn')?.addEventListener('click',()=>{const c=document.getElementById('item-category')?.value;const n=document.getElementById('item-name')?.value?.trim();const col=document.getElementById('item-color')?.value;if(!n)return Utils.toast('请输入名称','error');const r=Wardrobe.add({category:c,name:n,color:col});if(r.ok){Utils.toast('添加成功');document.getElementById('item-name')?.value='';renderWardrobe()}else{Utils.toast('添加失败','error')}});
-document.getElementById('generate-btn')?.addEventListener('click',async()=>{const u=User.current;const o=document.getElementById('occasion-input')?.value?.trim();if(!o)return Utils.toast('请输入场景','error');const b=document.getElementById('generate-btn');b.textContent='生成中...';b.disabled
+function showLogin(){document.getElementById('login-form')?.classList.remove('hidden');document.getElementById('register-form')?.classList.add('hidden')}
+function showRegister(){document.getElementById('login-form')?.classList.add('hidden');document.getElementById('register-form')?.classList.remove('hidden')}
+function loadHome(){const u=User.current;if(!u)return;document.getElementById('home-nickname')?.textContent=u.nickname||u.phone;document.getElementById('home-city')?.textContent=u.city||'未设置';document.getElementById('profile-nickname')?.value=u.nickname||'';document.getElementById('profile-gender')?.value=u.gender||'';document.getElementById('profile-age')?.value=u.ageGroup||'';document.getElementById('profile-occupation')?.value=u.occupation||'';document.getElementById('profile-income')?.value=u.income||'';document.getElementById('profile-style')?.value=u.stylePreference||'';document.getElementById('profile-city')?.value=u.city||'';renderWardrobe()}
+function renderWardrobe(){const l=document.getElementById('wardrobe-list');if(!l)return;l.innerHTML=Wardrobe.items.map(i=>`<div class="wardrobe-item"><span>${i.category}: ${i.name}${i.color?` (${i.color})`:''}</span><button onclick="Wardrobe.remove('${i.id}');renderWardrobe()">删除</button></div>`).join('')||'<p class="empty">衣橱为空</p>'}
+
+function handleLogin(){const p=document.getElementById('login-phone')?.value.trim();const w=document.getElementById('login-password')?.value;if(!p||!w)return Utils.toast('请填写信息','error');const r=User.login(p,w);if(r.ok){Utils.toast('登录成功');Utils.nav('home-page');loadHome()}else{Utils.toast(r.msg,'error')}}
+function handleRegister(){const p=document.getElementById('reg-phone')?.value.trim();const w=document.getElementById('reg-password')?.value;const c=document.getElementById('reg-confirm')?.value;if(!p||!w||!c)return Utils.toast('请填写信息','error');if(w!==c)return Utils.toast('密码不一致','error');const r=User.register(p,w);if(r.ok){Utils.toast('注册成功');showLogin()}else{Utils.toast(r.msg,'error')}}
+function handleSaveProfile(){const r=User.update({nickname:document.getElementById('profile-nickname')?.value,gender:document.getElementById('profile-gender')?.value,ageGroup:document.getElementById('profile-age')?.value,occupation:document.getElementById('profile-occupation')?.value,income:document.getElementById('profile-income')?.value,stylePreference:document.getElementById('profile-style')?.value,city:document.getElementById('profile-city')?.value});Utils.toast(r.ok?'保存成功':'保存失败',r.ok?'info':'error')}
+async function handleGetWeather(){const c=User.current?.city;if(!c)return Utils.toast('请先设置城市','error');try{const w=await Weather.get(c);document.getElementById('weather-info')?.textContent=`${w.city} ${w.temperature}°C ${w.condition}`;Utils.toast('天气更新成功')}catch(e){Utils.toast('获取天气失败','error')}}
+function handleAddWardrobe(){const c=document.getElementById('item-category')?.value;const n=document.getElementById('item-name')?.value?.trim();const col=document.getElementById('item-color')?.value;if(!n)return Utils.toast('请输入名称','error');const r=Wardrobe.add({category:c,name:n,color:col});if(r.ok){
