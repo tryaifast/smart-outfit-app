@@ -38,12 +38,32 @@ export default async function handler(request) {
             };
         }
 
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
+        // 阿里云百炼支持两种认证方式
+        let headers;
+        if (provider === 'aliyun') {
+            if (apiKey.startsWith('sk-sp-')) {
+                // 应用 Key 格式：使用 X-DashScope-API-Key
+                headers = {
+                    'Content-Type': 'application/json',
+                    'X-DashScope-API-Key': apiKey
+                };
+            } else {
+                // 标准 Key 格式：使用 Bearer
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                };
+            }
+        } else {
+            headers = {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
-            },
+            };
+        }
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: headers,
             body: JSON.stringify(requestBody)
         });
 
