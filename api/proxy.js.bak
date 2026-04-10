@@ -1,0 +1,141 @@
+// Vercel Edge Function - API 代理
+// 解决阿里云百炼 API 的 CORS 问题
+
+export default async function handler(request) {
+    // 处理 CORS 预检请求
+    if (request.method === 'OPTIONS') {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        });
+    }
+
+    // 只允许 POST 请求
+    if (request.method !== 'POST') {
+        return new Response('Method not allowed', { status: 405 });
+    }
+
+    try {
+        // 解析请求体
+        let body;
+        try {
+            body = await request.json();
+        } catch (e) {
+            return new Response(JSON.stringify({ error: 'Invalid JSON body', details: e.message }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+
+        const { provider, apiKey, messages, model, temperature, max_tokens } = body;
+
+        // 验证必填参数
+        if (!apiKey) {
+            return new Response(JSON.stringify({ error: 'Missing apiKey in request body' }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+
+        if (!messages || !Array.isArray(messages)) {
+            return new Response(JSON.stringify({ error: 'Missing or invalid messages in request body' }), {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+
+        let apiUrl, requestBody;
+
+        if (provider === 'aliyun') {
+            // 阿里云百炼 API
+            apiUrl = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
+            requestBody = {
+                model: model || 'qwen-max',
+                input: {
+                    messages: messages
+                },
+                parameters: {
+                    temperature: temperature || 0.7,
+                    max_tokens: max_tokens || 2000,
+                    result_format: 'message'
+                }
+            };
+        } else {
+            // Kimi API
+            apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
+            requestBody = {
+                model: model || 'kimi-k2.5',
+                messages: messages,
+                temperature: temperature || 0.7,
+                max_tokens: max_tokens || 2000
+            };
+        }
+
+        // 阿里云百炼支持两种认证方式
+        let headers;
+        if (provider === 'aliyun') {
+            if (apiKey.startsWith('sk-sp-')) {
+                // 应用 Key 格式：使用 X-DashScope-API-Key
+                headers = {
+                    'Content-Type': 'application/json',
+                    'X-DashScope-API-Key': apiKey
+                };
+            } else {
+                // 标准 Key 格式：使用 Bearer
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                };
+            }
+        } else {
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            };
+        }
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        return new Response(JSON.stringify(data), {
+            status: response.status,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message, stack: error.stack }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        });
+    }
+}
+
+// 处理 OPTIONS 预检请求
+export const config = {
+    runtime: 'edge'
+};

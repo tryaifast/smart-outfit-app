@@ -1,60 +1,30 @@
-// Vercel Edge Function - API 代理
+// Vercel Serverless Function - API 代理
 // 解决阿里云百炼 API 的 CORS 问题
 
-export default async function handler(request) {
+module.exports = async (req, res) => {
     // 处理 CORS 预检请求
-    if (request.method === 'OPTIONS') {
-        return new Response(null, {
-            status: 204,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            }
-        });
+    if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        return res.status(204).end();
     }
 
     // 只允许 POST 请求
-    if (request.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405 });
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
-        // 解析请求体
-        let body;
-        try {
-            body = await request.json();
-        } catch (e) {
-            return new Response(JSON.stringify({ error: 'Invalid JSON body', details: e.message }), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
-            });
-        }
-
-        const { provider, apiKey, messages, model, temperature, max_tokens } = body;
+        const { provider, apiKey, messages, model, temperature, max_tokens } = req.body;
 
         // 验证必填参数
         if (!apiKey) {
-            return new Response(JSON.stringify({ error: 'Missing apiKey in request body' }), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
-            });
+            return res.status(400).json({ error: 'Missing apiKey in request body' });
         }
 
         if (!messages || !Array.isArray(messages)) {
-            return new Response(JSON.stringify({ error: 'Missing or invalid messages in request body' }), {
-                status: 400,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
-            });
+            return res.status(400).json({ error: 'Missing or invalid messages in request body' });
         }
 
         let apiUrl, requestBody;
@@ -115,27 +85,12 @@ export default async function handler(request) {
 
         const data = await response.json();
 
-        return new Response(JSON.stringify(data), {
-            status: response.status,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            }
-        });
+        // 设置 CORS 头
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(response.status).json(data);
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message, stack: error.stack }), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
-        });
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.status(500).json({ error: error.message, stack: error.stack });
     }
-}
-
-// 处理 OPTIONS 预检请求
-export const config = {
-    runtime: 'edge'
 };
