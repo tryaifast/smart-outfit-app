@@ -690,8 +690,12 @@ async function callAIAPI(apiKey) {
         wardrobe: currentUser.wardrobe || []
     });
     
-    // 获取API提供商设置
-    const provider = Storage.get('api_provider', 'aliyun');
+    // 获取API提供商设置（默认阿里云百炼）
+    let provider = Storage.get('api_provider');
+    if (!provider) {
+        provider = 'aliyun'; // 强制默认阿里云
+        Storage.set('api_provider', provider);
+    }
     console.log('Using API provider:', provider);
     console.log('API Key prefix:', apiKey.substring(0, 10) + '...');
     
