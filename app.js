@@ -708,47 +708,57 @@ async function callAIAPI(apiKey) {
 
 async function callAliyunAPI(apiKey, prompt) {
     console.log('Calling Aliyun API...');
+    console.log('API URL:', CONFIG.ALIYUN_API_URL);
+    console.log('API Key prefix:', apiKey.substring(0, 15) + '...');
     
-    const response = await fetch(CONFIG.ALIYUN_API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + apiKey
-        },
-        body: JSON.stringify({
-            model: 'qwen-max',
-            input: {
-                messages: [
-                    { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
-                    { role: 'user', content: prompt }
-                ]
+    try {
+        const response = await fetch(CONFIG.ALIYUN_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey
             },
-            parameters: {
-                temperature: 0.7,
-                max_tokens: 2000,
-                result_format: 'message'
+            body: JSON.stringify({
+                model: 'qwen-max',
+                input: {
+                    messages: [
+                        { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
+                        { role: 'user', content: prompt }
+                    ]
+                },
+                parameters: {
+                    temperature: 0.7,
+                    max_tokens: 2000,
+                    result_format: 'message'
+                }
+            })
+        });
+        
+        console.log('Aliyun API response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Aliyun API error:', errorText);
+            let errorMsg = 'API请求失败';
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMsg = errorJson.message || errorJson.error?.message || errorText;
+            } catch (e) {
+                errorMsg = errorText || `HTTP ${response.status}`;
             }
-        })
-    });
-    
-    console.log('Aliyun API response status:', response.status);
-    
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Aliyun API error:', errorText);
-        let errorMsg = 'API请求失败';
-        try {
-            const errorJson = JSON.parse(errorText);
-            errorMsg = errorJson.message || errorJson.error?.message || errorText;
-        } catch (e) {
-            errorMsg = errorText || `HTTP ${response.status}`;
+            throw new Error(errorMsg);
         }
-        throw new Error(errorMsg);
+        
+        const data = await response.json();
+        console.log('Aliyun API response:', data);
+        return data.output?.choices?.[0]?.message?.content || data.output?.text || '推荐生成失败';
+    } catch (error) {
+        console.error('Fetch error:', error);
+        if (error.message === 'Failed to fetch') {
+            throw new Error('网络请求失败，可能是CORS跨域问题或网络连接问题。请检查：1) API Key是否正确 2) 网络连接是否正常');
+        }
+        throw error;
     }
-    
-    const data = await response.json();
-    console.log('Aliyun API response:', data);
-    return data.output?.choices?.[0]?.message?.content || data.output?.text || '推荐生成失败';
 }
 
 async function callKimiAPI(apiKey, prompt) {
