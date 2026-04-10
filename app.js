@@ -898,8 +898,14 @@ function loadAdminData() {
         document.getElementById('adminApiKey').value = savedKey;
     }
     
-    // 加载API提供商设置（强制默认阿里云百炼）
+    // 加载API提供商设置（强制默认阿里云百炼，清除旧设置）
     let savedProvider = Storage.get('api_provider');
+    // 如果之前保存的是kimi，强制重置为aliyun
+    if (savedProvider === 'kimi') {
+        console.log('检测到旧版Kimi设置，强制重置为阿里云百炼');
+        savedProvider = 'aliyun';
+        Storage.set('api_provider', savedProvider);
+    }
     if (!savedProvider) {
         savedProvider = 'aliyun';
         Storage.set('api_provider', savedProvider);
@@ -926,13 +932,37 @@ function saveAdminConfig() {
         return;
     }
     
-    Storage.set('admin_api_key', apiKey);
-    
-    // 保存API提供商选择
-    const providerSelect = document.getElementById('apiProvider');
-    if (providerSelect) {
-        Storage.set('api_provider', providerSelect.value);
+    // 自动检测API提供商
+    let provider = 'aliyun';
+    if (apiKey.startsWith('sk-') && apiKey.length > 20) {
+        // Kimi API Key 通常是 sk- 开头
+        provider = 'kimi';
+    } else if (apiKey.length > 10) {
+        // 阿里云百炼通常是其他格式
+        provider = 'aliyun';
     }
     
-    alert('配置已保存！');
+    // 更新下拉框显示
+    const providerSelect = document.getElementById('apiProvider');
+    if (providerSelect) {
+        providerSelect.value = provider;
+    }
+    
+    Storage.set('admin_api_key', apiKey);
+    Storage.set('api_provider', provider);
+    
+    alert(`配置已保存！自动识别为: ${provider === 'aliyun' ? '阿里云百炼' : 'Kimi'}`);
+}
+
+function clearAdminConfig() {
+    if (confirm('确定要清除所有配置吗？')) {
+        Storage.remove('admin_api_key');
+        Storage.remove('api_provider');
+        document.getElementById('adminApiKey').value = '';
+        const providerSelect = document.getElementById('apiProvider');
+        if (providerSelect) {
+            providerSelect.value = 'aliyun';
+        }
+        alert('配置已清除！');
+    }
 }
