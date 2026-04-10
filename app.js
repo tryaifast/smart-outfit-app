@@ -932,26 +932,14 @@ function saveAdminConfig() {
         return;
     }
     
-    // 自动检测API提供商
-    let provider = 'aliyun';
-    if (apiKey.startsWith('sk-') && apiKey.length > 20) {
-        // Kimi API Key 通常是 sk- 开头
-        provider = 'kimi';
-    } else if (apiKey.length > 10) {
-        // 阿里云百炼通常是其他格式
-        provider = 'aliyun';
-    }
-    
-    // 更新下拉框显示
+    // 获取用户选择的API提供商
     const providerSelect = document.getElementById('apiProvider');
-    if (providerSelect) {
-        providerSelect.value = provider;
-    }
+    const provider = providerSelect ? providerSelect.value : 'aliyun';
     
     Storage.set('admin_api_key', apiKey);
     Storage.set('api_provider', provider);
     
-    alert(`配置已保存！自动识别为: ${provider === 'aliyun' ? '阿里云百炼' : 'Kimi'}`);
+    alert(`配置已保存！使用: ${provider === 'aliyun' ? '阿里云百炼' : 'Kimi'}`);
 }
 
 function clearAdminConfig() {
