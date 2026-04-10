@@ -14,16 +14,15 @@
       ]
     }
   ],
+  "functions": {
+    "api/proxy.js": {
+      "maxDuration": 30
+    }
+  },
   "routes": [
     {
       "src": "/api/proxy",
       "dest": "/api/proxy.js"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
     }
   ]
 }
