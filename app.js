@@ -707,51 +707,72 @@ async function callAIAPI(apiKey) {
 }
 
 async function callAliyunAPI(apiKey, prompt) {
-    console.log('Calling Aliyun API via proxy...');
+    console.log('Calling Aliyun API directly...');
     console.log('API Key prefix:', apiKey.substring(0, 15) + '...');
     
-    // 使用 Vercel Edge Function 代理，避免 CORS 问题
-    const proxyUrl = window.location.origin + '/api/proxy';
+    // 直接调用阿里云百炼 API
+    const apiUrl = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation';
+    
+    // 确定认证头
+    let authHeader;
+    if (apiKey.startsWith('sk-sp-')) {
+        // 应用 Key 格式
+        authHeader = { 'X-DashScope-API-Key': apiKey };
+    } else {
+        // 标准 Key 格式
+        authHeader = { 'Authorization': `Bearer ${apiKey}` };
+    }
     
     try {
-        const response = await fetch(proxyUrl, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                ...authHeader
             },
             body: JSON.stringify({
-                provider: 'aliyun',
-                apiKey: apiKey,
-                messages: [
-                    { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
-                    { role: 'user', content: prompt }
-                ],
                 model: 'qwen-max',
-                temperature: 0.7,
-                max_tokens: 2000
+                input: {
+                    messages: [
+                        { role: 'system', content: '你是专业时尚穿搭顾问，根据用户信息、天气、场合提供精准穿搭建议。' },
+                        { role: 'user', content: prompt }
+                    ]
+                },
+                parameters: {
+                    temperature: 0.7,
+                    max_tokens: 2000,
+                    result_format: 'message'
+                }
             })
         });
         
-        console.log('Proxy response status:', response.status);
+        console.log('Aliyun API response status:', response.status);
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Proxy error:', errorText);
-            throw new Error('API请求失败: ' + errorText);
+            console.error('Aliyun API error:', errorText);
+            let errorMsg = 'API请求失败';
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMsg = errorJson.message || errorJson.error?.message || errorText;
+            } catch (e) {
+                errorMsg = errorText || `HTTP ${response.status}`;
+            }
+            throw new Error(errorMsg);
         }
         
         const data = await response.json();
-        console.log('Proxy response:', data);
+        console.log('Aliyun API response:', data);
         
-        if (data.error) {
-            throw new Error(data.error.message || data.error);
+        if (data.code) {
+            throw new Error(data.message || 'API调用失败');
         }
         
         return data.output?.choices?.[0]?.message?.content || data.output?.text || '推荐生成失败';
     } catch (error) {
         console.error('Fetch error:', error);
         if (error.message === 'Failed to fetch') {
-            throw new Error('网络请求失败，请检查网络连接');
+            throw new Error('网络请求失败（可能是CORS跨域问题）。请尝试使用Kimi API，或联系管理员配置代理服务器。');
         }
         throw error;
     }
