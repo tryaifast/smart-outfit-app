@@ -583,16 +583,15 @@
         </div>
     </div>
 
-    <script>
-        // 强制清除旧版本缓存，确保使用阿里云百炼
-        (function() {
-            const savedProvider = localStorage.getItem('smart_outfit_api_provider');
-            if (!savedProvider || savedProvider === 'kimi') {
-                localStorage.setItem('smart_outfit_api_provider', 'aliyun');
-                console.log('已强制设置API提供商为阿里云百炼');
-            }
-        })();
-    </script>
-    <script src="app.js?v=10"></script>
+    <!-- 模块化脚本 -->
+    <script src="js/config.js?v=11"></script>
+    <script src="js/utils.js?v=11"></script>
+    <script src="js/storage.js?v=11"></script>
+    <script src="js/api.js?v=11"></script>
+    <script src="js/user.js?v=11"></script>
+    <script src="js/weather.js?v=11"></script>
+    <script src="js/wardrobe.js?v=11"></script>
+    <script src="js/ui.js?v=11"></script>
+    <script src="js/app.js?v=11"></script>
 </body>
 </html>
