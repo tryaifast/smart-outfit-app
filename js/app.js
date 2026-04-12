@@ -14,7 +14,7 @@
 
 // 全局应用对象
 const App = {
-    version: '11',
+    version: '12',
     
     /**
      * 初始化应用

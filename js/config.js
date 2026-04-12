@@ -19,7 +19,7 @@
  */
 
 const CONFIG = {
-    version: '11',
+    version: '12',
     storagePrefix: 'smart_outfit_',
     maxWardrobeItems: 50,
     maxUsersPerDevice: 5,
