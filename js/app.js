@@ -1,9 +1,9 @@
 /**
- * @fileoverview 智能穿搭助手 - 主应用入口 (v11)
+ * @fileoverview 智能穿搭助手 - 主应用入口 (v15)
  * @module app
  * @description 应用主入口，协调各模块工作，处理用户交互
  * @author Smart Outfit Team
- * @version 11
+ * @version 15
  */
 
 /**
@@ -14,7 +14,7 @@
 
 // 全局应用对象
 const App = {
-    version: '14',
+    version: '15',
     
     /**
      * 初始化应用

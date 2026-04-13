@@ -3,7 +3,7 @@
  * @module config
  * @description 包含版本信息、API 配置、天气代码映射、城市坐标等全局常量
  * @author Smart Outfit Team
- * @version 11
+ * @version 15
  */
 
 /**
@@ -19,7 +19,7 @@
  */
 
 const CONFIG = {
-    version: '14',
+    version: '15',
     storagePrefix: 'smart_outfit_',
     maxWardrobeItems: 50,
     maxUsersPerDevice: 5,
