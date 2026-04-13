@@ -30,9 +30,8 @@ const CONFIG = {
     // API 配置
     api: {
         // Cloudflare Worker 代理端点（解决 CORS 问题）
-        // 用户需要替换为自己的 Worker 域名
         proxy: {
-            endpoint: 'https://smart-outfit-proxy.your-subdomain.workers.dev/chat',
+            endpoint: 'https://smart-outfit-proxy.475268601.workers.dev/chat',
             // 可选：备用 Worker 端点
             backupEndpoint: null
         },
