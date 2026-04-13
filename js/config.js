@@ -30,11 +30,14 @@ const CONFIG = {
     // API 配置
     api: {
         // Cloudflare Worker 代理端点（解决 CORS 问题）
+        // 用户需要替换为自己的 Worker 域名
         proxy: {
             endpoint: 'https://smart-outfit-proxy.your-subdomain.workers.dev/chat',
             // 可选：备用 Worker 端点
             backupEndpoint: null
         },
+        // 默认 AI 提供商
+        defaultProvider: 'aliyun',  // 'aliyun' | 'kimi' | 'openai'
         // 直接调用（需要 CORS Unblock 扩展，不推荐）
         aliyun: {
             endpoint: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',

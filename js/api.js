@@ -243,9 +243,10 @@ class API {
             throw new Error('请先配置 API Key');
         }
 
-        // 检测 API 提供商类型
-        const provider = apiKey.startsWith('sk-sp-') ? 'aliyun' : 
-                        apiKey.startsWith('sk-') && apiKey.length > 40 ? 'openai' : 'kimi';
+        // 检测 API 提供商类型（优先使用 config 中的默认配置）
+        const provider = CONFIG.api.defaultProvider || 
+                        (apiKey.startsWith('sk-sp-') ? 'aliyun' : 
+                         apiKey.startsWith('sk-') && apiKey.length > 40 ? 'openai' : 'kimi');
 
         // 构建请求体
         const body = {

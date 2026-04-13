@@ -154,4 +154,31 @@ async function load() {
 4. 更新文档
 
 ### 状态
-🟡 规划中 - 待用户确认后实施
+✅ **已完成** - v13 已发布
+
+### 修复内容
+1. **创建 Cloudflare Worker 脚本** (`workers/api-proxy.js`)
+   - 支持 Kimi / 阿里云百炼 / OpenAI 三后端
+   - 添加 CORS 头和错误处理
+   - 标准化响应格式
+
+2. **修改前端代码**
+   - `js/api.js`: 改为调用 Worker 代理
+   - `js/config.js`: 添加 proxy 配置，版本号 v13
+   - `index.html`: 更新所有脚本版本引用
+
+3. **部署**
+   - Git 提交: `6adc68b`
+   - 已推送到 `main` 分支
+
+### 待用户操作
+**需要用户自行部署 Cloudflare Worker**：
+1. 登录 https://dash.cloudflare.com
+2. 创建 Worker，粘贴 `workers/api-proxy.js` 代码
+3. 设置环境变量 `KIMI_API_KEY`（或其他 API Key）
+4. 获取 Worker 域名，更新 `js/config.js` 中的 `proxy.endpoint`
+5. 重新部署前端
+
+### 验证方法
+- 点击"获取穿搭建议"应成功返回 AI 回复
+- 浏览器控制台无 401 错误
