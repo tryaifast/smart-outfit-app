@@ -11,8 +11,6 @@
  * @namespace Utils
  */
 const Utils = {
-
-const Utils = {
     /**
      * 生成唯一 ID
      * @returns {string} 唯一标识符

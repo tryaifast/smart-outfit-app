@@ -182,3 +182,57 @@ async function load() {
 ### 验证方法
 - 点击"获取穿搭建议"应成功返回 AI 回复
 - 浏览器控制台无 401 错误
+
+---
+
+## 2026-04-13: 模块化重构后文件损坏（严重错误）
+
+### 问题描述
+用户报告应用完全无法使用：
+1. 点击任何按钮无响应
+2. 控制台报错：
+   ```
+   Uncaught SyntaxError: Unexpected identifier 'Utils'
+   weather.js:370 Uncaught SyntaxError: Unexpected end of input
+   app.js?v=13:314 Uncaught ReferenceError: Utils is not defined
+   ui.js?v=13:282 Uncaught TypeError: Cannot read properties of undefined (reading 'style')
+   ```
+
+### 根因分析（GSD 复盘）
+**这是 GSD 模块化重构时引入的严重错误！**
+
+**错误 1: utils.js 重复声明**
+```javascript
+const Utils = {
+
+const Utils = {  // ❌ 第11行重复声明，语法错误
+```
+
+**错误 2: weather.js 文件截断**
+- 文件在 362 行被截断，没有正确闭合
+- 导致 `Unexpected end of input`
+
+**错误 3: ui.js 元素引用错误**
+- `this.elements.adminLoginModal` 未定义
+- 初始化时未正确绑定 DOM 元素
+
+**根本原因（GSD 规范违反）**:
+1. **文件写入后未验证完整性** - 违反 GSD "验证"阶段
+2. **未进行代码审查** - 违反 GSD "质量检查"
+3. **生产环境部署前未测试** - 违反 GSD "部署验证"
+
+### 修复方案
+1. **修复 utils.js**: 删除重复的 `const Utils = {`
+2. **重写 weather.js**: 确保文件完整闭合
+3. **修复 ui.js**: 检查元素初始化逻辑
+4. **全面审核所有模块文件**
+5. **版本号 v13 → v14** 强制刷新
+
+### 教训（写入 MEMORY.md）
+1. **模块化重构必须逐文件验证**
+2. **文件写入后立即检查语法完整性**
+3. **生产部署前必须功能测试**
+4. **GSD 流程每个阶段都不可跳过
+
+### 状态
+🚨 **紧急修复中** - 需要重写多个损坏文件

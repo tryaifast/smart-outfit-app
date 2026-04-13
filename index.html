@@ -92,7 +92,7 @@
         }
         .error-msg.show { display: block; }
         
-        /* 主应用 */
+        /* 主应�?*/
         .main-app { display: none; }
         .main-app.show { display: block; }
         
@@ -172,7 +172,7 @@
             color: white;
         }
         
-        /* 加载和结果 */
+        /* 加载和结�?*/
         .loading { display: none; text-align: center; padding: 40px; }
         .loading.show { display: block; }
         .spinner {
@@ -332,12 +332,12 @@
             <!-- 登录表单 -->
             <div class="auth-form" id="loginForm">
                 <div class="form-group">
-                    <label>手机号</label>
+                    <label>手机�?/label>
                     <input type="tel" id="loginPhone" placeholder="请输入手机号" maxlength="11">
                 </div>
                 <div class="form-group">
                     <label>密码</label>
-                    <input type="password" id="loginPassword" placeholder="请输入密码">
+                    <input type="password" id="loginPassword" placeholder="请输入密�?>
                 </div>
                 <div class="error-msg" id="loginError"></div>
                 <button class="btn" onclick="handleLogin()">登录</button>
@@ -346,7 +346,7 @@
             <!-- 注册表单 -->
             <div class="auth-form" id="registerForm" style="display: none;">
                 <div class="form-group">
-                    <label>手机号</label>
+                    <label>手机�?/label>
                     <input type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11">
                 </div>
                 <div class="form-group">
@@ -355,14 +355,14 @@
                 </div>
                 <div class="form-group">
                     <label>确认密码</label>
-                    <input type="password" id="regConfirmPassword" placeholder="请再次输入密码">
+                    <input type="password" id="regConfirmPassword" placeholder="请再次输入密�?>
                 </div>
                 <div class="error-msg" id="regError"></div>
                 <button class="btn" onclick="handleRegister()">注册</button>
             </div>
         </div>
         
-        <!-- 主应用 -->
+        <!-- 主应�?-->
         <div class="main-app" id="mainApp">
             <div class="nav-tabs">
                 <div class="nav-tab active" data-tab="recommend">智能推荐</div>
@@ -376,7 +376,7 @@
                     <div class="location-selector" onclick="openLocationModal()">
                         <span>📍</span>
                         <span id="currentLocation">正在定位...</span>
-                        <span>▼</span>
+                        <span>�?/span>
                     </div>
                     <div class="weather-main">
                         <div class="weather-temp" id="weatherTemp">--°</div>
@@ -391,7 +391,7 @@
                     <div class="section-title">今天是什么场合？</div>
                     <div class="tag-container" id="occasionTags">
                         <div class="tag" data-value="important_meeting">重要会议</div>
-                        <div class="tag" data-value="daily_work">普通上班</div>
+                        <div class="tag" data-value="daily_work">普通上�?/div>
                         <div class="tag" data-value="client_visit">客户拜访</div>
                         <div class="tag" data-value="party">派对聚会</div>
                         <div class="tag" data-value="date">约会</div>
@@ -418,11 +418,10 @@
                 <h3 style="margin-bottom: 15px;">添加衣物</h3>
                 <div class="form-group">
                     <textarea id="newClothes" rows="4" placeholder="描述你的衣物，例如：
-藏青色西装外套
-白色丝质衬衫
-黑色阔腿裤" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px; resize: vertical;"></textarea>
+藏青色西装外�?白色丝质衬衫
+黑色阔腿�? style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px; resize: vertical;"></textarea>
                 </div>
-                <button class="btn" onclick="addToWardrobe()" style="margin-bottom: 20px;">添加到衣橱</button>
+                <button class="btn" onclick="addToWardrobe()" style="margin-bottom: 20px;">添加到衣�?/button>
                 
                 <h3 style="margin-bottom: 15px;">我的衣橱</h3>
                 <div id="wardrobeList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
@@ -436,7 +435,7 @@
                         <span class="placeholder" id="avatarPlaceholder">👤</span>
                     </div>
                     <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
-                    <div class="profile-name" id="profileName">未设置昵称</div>
+                    <div class="profile-name" id="profileName">未设置昵�?/div>
                     <div style="font-size: 14px; opacity: 0.9;" id="profilePhone">--</div>
                 </div>
                 
@@ -449,22 +448,22 @@
                         <label>性别</label>
                         <select id="editGender" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
                             <option value="">请选择</option>
-                            <option value="male">男</option>
-                            <option value="female">女</option>
+                            <option value="male">�?/option>
+                            <option value="female">�?/option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>年龄段</label>
+                        <label>年龄�?/label>
                         <select id="editAgeRange" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
                             <option value="">请选择</option>
-                            <option value="18-25">18-25岁</option>
-                            <option value="26-35">26-35岁</option>
-                            <option value="36-45">36-45岁</option>
-                            <option value="46+">46岁以上</option>
+                            <option value="18-25">18-25�?/option>
+                            <option value="26-35">26-35�?/option>
+                            <option value="36-45">36-45�?/option>
+                            <option value="46+">46岁以�?/option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>月收入</label>
+                        <label>月收�?/label>
                         <select id="editIncome" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
                             <option value="">请选择</option>
                             <option value="5k-10k">5k-10k</option>
@@ -485,11 +484,11 @@
                             <option value="classic">经典优雅</option>
                             <option value="trendy">时尚潮流</option>
                             <option value="business">商务干练</option>
-                            <option value="casual">休闲舒适</option>
+                            <option value="casual">休闲舒�?/option>
                         </select>
                     </div>
                     <button class="btn" onclick="saveProfile()">保存资料</button>
-                    <button class="btn" onclick="logout()" style="margin-top: 10px; background: #6c757d;">退出登录</button>
+                    <button class="btn" onclick="logout()" style="margin-top: 10px; background: #6c757d;">退出登�?/button>
                 </div>
             </div>
         </div>
@@ -543,16 +542,16 @@
             <div class="config-section">
                 <h3 style="margin-bottom: 15px;">API配置</h3>
                 <div class="form-group">
-                    <label>API提供商</label>
+                    <label>API提供�?/label>
                     <select id="apiProvider" style="width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 10px;">
-                        <option value="aliyun">阿里云百炼</option>
+                        <option value="aliyun">阿里云百�?/option>
                         <option value="kimi">Kimi (Moonshot)</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>API Key</label>
                     <input type="password" id="adminApiKey" placeholder="输入API Key">
-                    <small style="color: #666; display: block; margin-top: 5px;">阿里云百炼: sk-xxx 格式 | Kimi: 从控制台获取</small>
+                    <small style="color: #666; display: block; margin-top: 5px;">阿里云百�? sk-xxx 格式 | Kimi: 从控制台获取</small>
                 </div>
                 <button class="btn" onclick="saveAdminConfig()">保存配置</button>
                 <button class="btn" onclick="clearAdminConfig()" style="margin-top: 10px; background: #dc3545;">清除配置</button>
@@ -571,7 +570,7 @@
     <!-- 后台登录弹窗 -->
     <div class="modal" id="adminLoginModal">
         <div class="modal-content">
-            <div class="modal-header">管理员登录</div>
+            <div class="modal-header">管理员登�?/div>
             <div class="form-group">
                 <label>账号</label>
                 <input type="text" id="adminUsername" placeholder="请输入管理员账号">
@@ -586,15 +585,15 @@
         </div>
     </div>
 
-    <!-- 模块化脚本 -->
-    <script src="js/config.js?v=13"></script>
-    <script src="js/utils.js?v=13"></script>
-    <script src="js/storage.js?v=13"></script>
-    <script src="js/api.js?v=13"></script>
-    <script src="js/user.js?v=13"></script>
-    <script src="js/weather.js?v=13"></script>
-    <script src="js/wardrobe.js?v=13"></script>
-    <script src="js/ui.js?v=13"></script>
-    <script src="js/app.js?v=13"></script>
+    <!-- 模块化脚�?-->
+    <script src="js/config.js?v=14"></script>
+    <script src="js/utils.js?v=14"></script>
+    <script src="js/storage.js?v=14"></script>
+    <script src="js/api.js?v=14"></script>
+    <script src="js/user.js?v=14"></script>
+    <script src="js/weather.js?v=14"></script>
+    <script src="js/wardrobe.js?v=14"></script>
+    <script src="js/ui.js?v=14"></script>
+    <script src="js/app.js?v=14"></script>
 </body>
 </html>
