@@ -19,7 +19,7 @@
  */
 
 const CONFIG = {
-    version: '12',
+    version: '13',
     storagePrefix: 'smart_outfit_',
     maxWardrobeItems: 50,
     maxUsersPerDevice: 5,
@@ -29,9 +29,17 @@ const CONFIG = {
     },
     // API 配置
     api: {
+        // Cloudflare Worker 代理端点（解决 CORS 问题）
+        proxy: {
+            endpoint: 'https://smart-outfit-proxy.your-subdomain.workers.dev/chat',
+            // 可选：备用 Worker 端点
+            backupEndpoint: null
+        },
+        // 直接调用（需要 CORS Unblock 扩展，不推荐）
         aliyun: {
             endpoint: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
-            model: 'qwen-max'
+            model: 'qwen-max',
+            enabled: false  // 浏览器直接调用会被 CORS 拦截
         },
         weather: {
             endpoint: 'https://api.open-meteo.com/v1/forecast'

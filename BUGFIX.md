@@ -49,7 +49,64 @@ index.html 中的脚本引用版本号未及时更新，导致浏览器继续使
 3. **测试时强制刷新浏览器 (Ctrl+F5)**
 
 ### 状态
-✅ 已修复 - 版本号更新为 v12
+❌ **未完全修复** - 发现更深层问题
+
+---
+
+## 2026-04-12: Vercel 部署未更新（重大发现）
+
+### 问题描述
+用户仍然看到 `app.js?v=10` 错误，版本号更新无效。
+
+### 根因分析（重大发现）
+**GitHub 默认分支是 `main`，我们推送到了 `master`！**
+
+1. GitHub 默认分支: `main`
+2. 我们的推送: `master` 分支
+3. Vercel 配置: 部署 `main` 分支
+4. 结果: Vercel 从未收到更新，一直部署旧代码
+
+### 验证
+```bash
+# GitHub API 返回
+default_branch: "main"
+
+
+# Vercel 部署的 HTML
+<script src="app.js"></script>  # 旧版单文件
+
+
+# GitHub 上的 HTML
+<script src="js/config.js?v=12"> # 新版模块化
+```
+
+### 修复方案
+1. **合并到 main 分支**: `git push origin main`
+2. **添加根目录 app.js**: 作为模块化加载器兼容旧版 HTML
+
+### 修复代码
+```javascript
+// app.js (根目录) - 加载器
+const modules = [
+    'js/config.js?v=12',
+    'js/utils.js?v=12',
+    // ... 其他模块
+];
+
+async function load() {
+    for (const mod of modules) {
+        await loadScript(mod);
+    }
+}
+```
+
+### 教训
+1. **推送前检查默认分支**: `git remote show origin`
+2. **Vercel 配置检查**: 确认部署分支与推送分支一致
+3. **部署后验证**: 检查线上文件是否与 GitHub 一致
+
+### 状态
+🟡 修复中 - 已推送 main 分支，添加 app.js 加载器
 
 ---
 
@@ -64,3 +121,37 @@ index.html 中的脚本引用版本号未及时更新，导致浏览器继续使
 **问题**: 浏览器直接调用阿里云 API 被 CORS 拦截
 **修复**: 添加离线降级推荐，依赖 CORS Unblock 扩展
 **教训**: 第三方 API 需提前测试 CORS 支持
+
+---
+
+## 2026-04-13: 阿里云百炼 API 再次 401 错误
+
+### 问题描述
+用户报告：
+1. `api.moonshot.cn/v1/chat/completions` 返回 401
+2. 点击"获取穿搭建议"显示 "Invalid Authentication"
+
+### 根因分析
+**历史问题复发**：阿里云百炼 API 不允许浏览器直接调用（CORS + 认证问题）
+
+之前尝试的修复：
+- Vercel 代理方案 → **失败**（401/NOT_FOUND）
+- CORS Unblock 扩展 → **不可靠**（用户需要手动安装）
+
+**根本原因**：浏览器环境无法安全地调用需要密钥的 AI API
+
+### 解决方案（GSD 规范决策）
+采用 **Cloudflare Workers 代理方案**：
+- 免费额度：10万次请求/天
+- 全球节点，延迟低
+- 隐藏 API Key，安全可靠
+- 支持切换后端（Kimi/阿里云/OpenAI）
+
+### 实施计划
+1. 创建 Cloudflare Worker 脚本
+2. 修改前端 API 调用指向 Worker
+3. 部署并验证
+4. 更新文档
+
+### 状态
+🟡 规划中 - 待用户确认后实施

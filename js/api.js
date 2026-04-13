@@ -233,7 +233,7 @@ class API {
     }
 
     /**
-     * 调用 AI 推荐 API
+     * 调用 AI 推荐 API（通过 Cloudflare Worker 代理）
      * @param {string} prompt - 提示词
      * @returns {Promise<string>}
      */
@@ -243,38 +243,33 @@ class API {
             throw new Error('请先配置 API Key');
         }
 
-        const isAliyun = apiKey.startsWith('sk-sp-');
-        const headers = isAliyun 
-            ? { 
-                'Content-Type': 'application/json',
-                'X-DashScope-API-Key': apiKey 
-              }
-            : { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}` 
-              };
+        // 检测 API 提供商类型
+        const provider = apiKey.startsWith('sk-sp-') ? 'aliyun' : 
+                        apiKey.startsWith('sk-') && apiKey.length > 40 ? 'openai' : 'kimi';
 
+        // 构建请求体
         const body = {
-            model: CONFIG.api.aliyun.model,
-            input: {
-                messages: [
-                    { role: 'system', content: '你是专业穿搭顾问，根据用户画像、天气、场合和衣橱给出专业穿搭建议。' },
-                    { role: 'user', content: prompt }
-                ]
-            },
-            parameters: {
-                temperature: 0.8,
-                max_tokens: 2000,
-                result_format: 'message'
-            }
+            provider,
+            messages: [
+                { role: 'system', content: '你是专业穿搭顾问，根据用户画像、天气、场合和衣橱给出专业穿搭建议。' },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.8,
+            max_tokens: 2000
         };
 
         try {
-            const response = await this.fetchWithTimeout(CONFIG.api.aliyun.endpoint, {
+            // 优先使用 Cloudflare Worker 代理
+            const proxyEndpoint = CONFIG.api.proxy.endpoint;
+            
+            console.log(`调用 AI API (provider: ${provider})`);
+            
+            const response = await this.fetchWithTimeout(proxyEndpoint, {
                 method: 'POST',
-                headers,
-                body: JSON.stringify(body),
-                mode: 'cors'
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
@@ -282,22 +277,34 @@ class API {
                 if (response.status === 401) {
                     throw new Error('API Key 无效，请检查配置');
                 }
-                throw new Error(errorData.message || `API 错误: ${response.status}`);
+                if (response.status === 500) {
+                    throw new Error('代理服务错误，请检查 Worker 配置');
+                }
+                throw new Error(errorData.error || errorData.message || `API 错误: ${response.status}`);
             }
 
             const data = await response.json();
-            const content = data.output?.message?.content || data.output?.text;
+            const content = data.choices?.[0]?.message?.content;
             
             if (!content) {
+                console.error('AI 返回数据:', data);
                 throw new Error('AI 返回数据格式异常');
             }
 
             return content;
         } catch (error) {
             console.error('AI API error:', error);
-            if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                throw new Error('API 调用失败，请安装 CORS Unblock 扩展或检查网络');
+            
+            // 如果是 Worker 未配置，给出明确提示
+            if (error.message.includes('your-subdomain')) {
+                throw new Error('Cloudflare Worker 未配置，请先部署 Worker 并更新 config.js 中的 endpoint');
             }
+            
+            // 网络错误提示
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                throw new Error('网络连接失败，请检查网络或 Worker 是否可访问');
+            }
+            
             throw error;
         }
     }
